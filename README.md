@@ -46,8 +46,25 @@ To animate the height you can simply adjust the Y value of the entity's scale, l
 `document.querySelector('[aframe-hexgraph-hexmap]').setAttribute('scale', [1, newHeight, 1].join(" "))`. 
 You can also adjust the opacity of the geometry similarly: `document.querySelector('[aframe-hexgraph-hexmap]').setAttribute('aframe-hexgraph-hexmap', {opacity: newValue})`
 
-# Input data #
 
+
+# Input data #
+As an image: provide an image URL or aframe asset tag (like "#myImg") as the src. The value will be read from the Red pixel, but black and white images work fine too (and compress better).
+
+As JSON: provide a URL or aframe asset tag pointing to a .json file. The file should contain only a two-dimensional numeric array as shown in the example .json file. For example the data:
+```
+1 2 3 
+4 5 6
+7 8 9
+```
+becomes in JSON:
+```
+[[1,2,3], [4,5,6], [7,8,9]]
+```
+
+Image files have the advantage of offering great built-in compression. Try providing your data as a lower-quaity JPEG and compare the file size against the corresponding JSON file.
+
+Adjust the hexDensity as needed to make it look nice.
 
 
 # Using #
