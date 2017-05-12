@@ -1,21 +1,5 @@
 
 
-Array.prototype.max = function() {
-  return Math.max.apply(null, this);
-};
-
-Array.prototype.min = function() {
-  return Math.min.apply(null, this);
-};
-Array.prototype.abs = function() {
-	return this.map(function(v) {return Math.abs(v);});
-};
-Array.prototype.rangeDistance = function() {
-	console.assert(this.length==2,'Can only handle two-element arrays');
-	return Math.abs(this[1]-this[0]);
-};
-
-
 
  AFRAME.registerComponent("aframe-hexgraph-hexmap", {
 
@@ -28,12 +12,12 @@ Array.prototype.rangeDistance = function() {
 		wireframeColor:  { type: "color", default:"#fff"},
 		NODATA_VALUE:    { type: "number", default:-9999},
 		tileScale:       { type: "number", default: 0.7}, // How much of the hex cell to fill with a rendered tiles
-		showZerovalCells:{ type: "boolean", default: true}, // Render cells with zero value
+		showZerovalCells:{ type: "boolean", default: false}, // Render cells with zero value
 		metalness:       { type: "number", default:0.2},
 		hexDensity:      { type: "number", default:0.3},
 		hexDensityMobile:{ type: "number", default:0.1},
 
-		palette:          { type: "string", default: '["#2166ac", "#4393c3", "#92c5de", "#d1e5f0", "#fddbc7", "#f4a582", "#d6604d", "#b2182b"]'}, // Taken from Color Brewer. Must be a valid JSON string (readable by JSON.parse())
+		palette:          { type: "string", default: 'redblue'},
 		scaleHeight:      { type: "boolean", default: true},  // Scale the height of each hex tile according to its value?
 		scaleArea:        { type: "boolean", default: true}, // Scale the area of each hex tile according to its value?
 
