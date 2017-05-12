@@ -1,12 +1,10 @@
 # aframe-hexgraph-hexmap
-Hexmap data viz component, a la deck.gl
-
 This data visualization component is inspired directly by the hexmap layer of (deck.gl). 
 
-!(img/example.png)
+!(https://raw.githubusercontent.com/morandd/aframe-hexgraph-hexmap/master/img/example.png)
 
 Given X/Y input data in a JSON or image file, it bins the data into a hexagonal grid and renders it
-as a BufferGeometry. Tiles can be scaled by height, area, color.
+as a BufferGeometry. Tiles can be scaled by height, area and/or color.
 
 It is based on the [von-grid](https://github.com/vonWolfehaus/von-grid/) hex map library and
 totally indebted to [Amit's](http://www.redblobgames.com/grids/hexagons/) expanation about hex grids.
@@ -22,7 +20,7 @@ totally indebted to [Amit's](http://www.redblobgames.com/grids/hexagons/) expana
 | scaleHeight | Scale tile height proportional to their value? | true |
 | palette | A predefined palette or palette as JSON string | redblue |
 | width | Width of map, in AFRAME units. | 1 |
-| wireframeOn | Display wireframe on top of map? | false |
+| wireframeOn | Display wireframe overlay? | false |
 | wireframeColor | Color of wireframe | #fff |
 | wireframeOnly | Display only wireframe?   | false |
 | NODATA_VALUE | Cells with this value will not be rendered | -999 |
