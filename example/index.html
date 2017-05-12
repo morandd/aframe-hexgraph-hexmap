@@ -9,29 +9,17 @@
 
  
 
-
   
     <script src="https://cdn.rawgit.com/tizzle/aframe-orbit-controls-component/master/dist/aframe-orbit-controls-component.min.js"></script>
 
 
 	<script src="//d3js.org/d3.v4.min.js"></script>
 
-	<script src="hex-grid.min.js"></script>
- <!--
- <script src="//raw.githubusercontent.com/vonWolfehaus/von-grid/master/dist/hex-grid.min.js"></script>
- -->
- <!--
- <script src="../von-grid/src/vg.js"></script>
- <script src="../von-grid/src/utils/Tools.js"></script>
- <script src="../von-grid/src/Board.js"></script>
- <script src="../von-grid/src/lib/LinkedList.js"></script>
- <script src="../von-grid/src/grids/Cell.js"></script>
- <script src="../von-grid/src/grids/Tile.js"></script>
- <script src="../von-grid/src/grids/HexGrid.js"></script>
+	<script src="//raw.githubusercontent.com/vonWolfehaus/von-grid/master/dist/hex-grid.min.js"></script>
 
- -->
- <script src="dans_aframe_hexplot_component.js"></script>
- <script src="HexGridBufGeom.js"></script>
+	<script src="dans_aframe_hexplot_component.js"></script>
+	<script src="HexGridBufGeom.js"></script>
+
 
  	<script>
 	AFRAME.registerComponent('page_load_event', {
@@ -95,129 +83,23 @@
 
       <a-assets>
 		<a-asset-item id="sampledata" src="biggertest.json"></a-asset-item>
-		<img id="ef" src="asia_small.png" style="display:none"/>
-		<img id="direct" src="asia_direct_small.png" style="display:none"/>
+		<img id="sampledata2" src="asia_small.png" style="display:none"/>
 	  </a-assets>
 
 	<a-sky color="#aaa"></a-sky>
 
-	<a-entity dans_aframe_hexplot_component="jsonUrl:#ef; width:5; scaleArea:false; opacity:1; scaleHeight:true; showZerovalCells:false; tileScale:1; wireframeOn:false; hexDensity:0.45; hexDensityMobile:0.33, wireframeColor:#000; palette: ['#fff7ec','#fee8c8','#fdd49e','#fdbb84','#fc8d59','#ef6548','#d7301f','#990000']" scale="1 0 1" >
-		  <a-animation attribute="scale"
-               dur="4000"
-               delay="1000"
-               direction="alternate"
-               fill="forwards"
-               to="1 .2 1"
-               repeat="indefinite"></a-animation>
+	<a-entity dans_aframe_hexplot_component="jsonUrl:#sampledata2; width:5; scaleArea:false; opacity:1; scaleHeight:true; showZerovalCells:false; tileScale:1; wireframeOn:false; hexDensity:0.45; hexDensityMobile:0.33, wireframeColor:#000; palette: ['#fff7ec','#fee8c8','#fdd49e','#fdbb84','#fc8d59','#ef6548','#d7301f','#990000']" scale="1 .2 1" >
 	</a-entity>
 
-	<a-entity dans_aframe_hexplot_component="jsonUrl:#ef; width:5; scaleArea:false; opacity:.99; scaleHeight:true; showZerovalCells:false; tileScale:1; wireframeOn:false; hexDensity:0.45; hexDensityMobile:0.33, wireframeColor:#000; palette: ['#f7fcf0','#e0f3db','#ccebc5','#a8ddb5','#7bccc4','#4eb3d3','#2b8cbe','#08589e']" scale="1 0.2 1" >
-		  <a-animation attribute="dans_aframe_hexplot_component.opacity"
-               dur="5000"
-               direction="alternate"
-               fill="forwards"
-               easing="ease-in"
-               to="0"
-               repeat="indefinite"></a-animation>
 
+
+
+	<a-entity camera look-controls wasd-controls="fly:true" mouse-cursor="" position="1 1 2">
 	</a-entity>
-	
-	<!--
-		  <a-animation attribute="scale"
-               dur="5000"
-               fill="forwards"
-               to="1 0.2 1"
-               repeat="indefinite"></a-animation>
-
-
-			  <a-animation attribute="scale"
-               dur="3000"
-               fill="forwards"
-               to="1 0 1"
-               repeat="indefinite"></a-animation>
-		
--->
-
-
-<!--
-Grey->Purple: ['#f7fcfd','#e0ecf4','#bfd3e6','#9ebcda','#8c96c6','#8c6bb1','#88419d','#6e016b']
-AquaBlues: ['#f7fcf0','#e0f3db','#ccebc5','#a8ddb5','#7bccc4','#4eb3d3','#2b8cbe','#08589e']
-Reds: ['#fff7ec','#fee8c8','#fdd49e','#fdbb84','#fc8d59','#ef6548','#d7301f','#990000']
-Blue-Red: ["#2166ac", "#4393c3", "#92c5de", "#d1e5f0", "#fddbc7", "#f4a582", "#d6604d", "#b2182b"]
--->
-
-	<!-- orbit control look at target. This should *not* have any position applied to it, or the orbit controls get wonky -->
-
-
-	<!--
-	 <a-entity id="lookat" geometry="primitive: box" scale="0.1 0.1 0.1" material="color: #cc0000; wireframe:true; visible:true"></a-entity>
-	<a-box color="green" height="1" width="5" depth="5"  wireframe="true"></a-box>
-	 <a-entity  geometry="primitive: box" scale="0.1 0.1 0.1" material="color: #00ff00; wireframe:true; visible:true"></a-entity>
-	
-	<a-box color="tomato" depth="1" height="1" width="1"  wireframe="true" position="0 0 0" ></a-box>
-	<a-box color="tomato" depth="1" height="1" width="1"  position="0 0 0" ></a-box>
-	<a-box color="tomato" depth="1" height="1" width="1"  position="5 0 5" ></a-box>
-	<a-light color="white" position="0 2 6"></a-light>
-	-->
-	<!--
-	
-<a-text position="0 0.5 -3" color="#555" value="heatmap rendered on a hexagon grid" align="center"></a-text>
--->
-<!--	<a-entity light="type: ambient; color: #fCC"></a-entity>
-	<a-light color="white" position="-1 2 -3"></a-light>
-	<a-light color="white" position="0 6 -1"></a-light>
-	<a-light color="white" position="0 0.5 -1"></a-light>
-	-->
-	<!--
-		<a-entity
-            camera
-            id="camera_orbit"
-            position="0 2 6"
-			active="false"
-			orbit-controls="
-                autoRotate: false;
-                target: #lookat;
-                enableDamping: true;
-                dampingFactor: 0.125;
-                rotateSpeed:0.15;
-				zoomSpeed:0.5;
-				maxPolarAngle:1.85;
-                minDistance:0.2;
-                maxDistance:100;">
-		</a-entity>
-
-			active="true"
-
-			look-controls
-			wasd-controls="fly:true" 
-			mouse-cursor=""
-				-->
-		<a-entity camera look-controls wasd-controls="fly:true" mouse-cursor="" position="1 1 2">
-		</a-entity>
 
 	
 </a-scene>
 
-  <script>
-  /*
-	document.addEventListener("DOMContentLoaded", function(event) {
-		var scene = document.querySelector('a-scene');
-		if (scene.hasLoaded) addEventListeners();
-		else scene.addEventListener( 'loaded', addEventListeners );
-	});
-	function addEventListeners() {
-		
-		document.querySelector('a-scene').addEventListener('enter-vr', function(evt){
-			document.querySelector('#camera_orbit').setAttribute('camera', 'active', false);
-			document.querySelector('#camera_look').setAttribute('camera', 'active', true);
-		});
-		
-		document.querySelector('a-scene').addEventListener('exit-vr', function(evt){
-			document.querySelector('#camera_orbit').setAttribute('camera', 'active', true);
-			document.querySelector('#camera_look').setAttribute('camera', 'active', false);
-		});
-	} // end addEventListeners()
-	*/
-  </script>
+
 </html>
 
