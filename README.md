@@ -3,6 +3,8 @@ This data visualization component is inspired directly by the hexmap layer of (d
 
 ![alt text](https://raw.githubusercontent.com/morandd/aframe-hexgraph-hexmap/master/img/example.png "Example")
 
+[Demo](https://morandd.github.io/aframe-hexgraph-hexmap/)
+
 Given X/Y input data in a JSON or image file, it bins the data into a hexagonal grid and renders it
 as a BufferGeometry. Tiles can be scaled by height, area and/or color.
 
