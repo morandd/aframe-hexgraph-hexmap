@@ -1,7 +1,7 @@
 # aframe-hexgraph-hexmap
 This data visualization component is inspired directly by the hexmap layer of (deck.gl). 
 
-!(https://raw.githubusercontent.com/morandd/aframe-hexgraph-hexmap/master/img/example.png)
+![alt text](https://raw.githubusercontent.com/morandd/aframe-hexgraph-hexmap/master/img/example.png "Example")
 
 Given X/Y input data in a JSON or image file, it bins the data into a hexagonal grid and renders it
 as a BufferGeometry. Tiles can be scaled by height, area and/or color.
@@ -11,7 +11,7 @@ totally indebted to [Amit's](http://www.redblobgames.com/grids/hexagons/) expana
 
 
 
-## API
+# API #
 
 | Attribute | Description | Default |
 | ---  | --- | --- |
@@ -34,16 +34,16 @@ totally indebted to [Amit's](http://www.redblobgames.com/grids/hexagons/) expana
 | opacity | Opacity of the object. | 0.75 |
 
 ### Color Palettes ###
-There are a few built-in palettes: *greypurple*, *aquablues*, *reds*, *redblue*, *grass*, *greens*, and *autumn*. These are taken from
-(http://colorbrewer2.org). You can also specify a palette as a JSON array, as seen in the example.
+There are a few built-in palettes: `greypurple`, `aquablues`, `reds`, `redblue`, `grass`, `greens`, and `autumn`. These are taken from
+[ColorBrewer](http://colorbrewer2.org). You can also specify a palette as a JSON array, as shown in the example.
 
 
 
-## Input data ##
+# Input data #
 
 
 
-## Using ##
+# Using #
 
 This component requires D3 and (for now) the von-grid hex grid library. 
 
