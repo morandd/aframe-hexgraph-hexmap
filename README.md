@@ -6,6 +6,9 @@ This data visualization component is inspired directly by the hexmap layer of (d
 Given X/Y input data in a JSON or image file, it bins the data into a hexagonal grid and renders it
 as a BufferGeometry. Tiles can be scaled by height, area and/or color.
 
+This component uses a BufferGeometry under the hood. This is good for performance, but it is hard to update individual cells (you must 
+manipulate individual verticies). So it is intended/suited for use as a data viz component.
+
 It is based on the [von-grid](https://github.com/vonWolfehaus/von-grid/) hex map library and
 totally indebted to [Amit's](http://www.redblobgames.com/grids/hexagons/) expanation about hex grids.
 
@@ -38,6 +41,10 @@ There are a few built-in palettes: `greypurple`, `aquablues`, `reds`, `redblue`,
 [ColorBrewer](http://colorbrewer2.org). You can also specify a palette as a JSON array, as shown in the example.
 
 
+### Animating ###
+To animate the height you can simply adjust the Y value of the entity's scale, like this:
+`document.querySelector('[aframe-hexgraph-hexmap]').setAttribute('scale', [1, newHeight, 1].join(" "))`. 
+You can also adjust the opacity of the geometry similarly: `document.querySelector('[aframe-hexgraph-hexmap]').setAttribute('aframe-hexgraph-hexmap', {opacity: newValue})`
 
 # Input data #
 
@@ -45,7 +52,7 @@ There are a few built-in palettes: `greypurple`, `aquablues`, `reds`, `redblue`,
 
 # Using #
 
-This component requires D3 and (for now) the von-grid hex grid library. 
+This component requires D3 and the von-grid hex grid library. 
 
 ```
 	<script src="//d3js.org/d3.v4.min.js"></script>
