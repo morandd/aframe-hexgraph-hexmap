@@ -28,7 +28,7 @@
 		},
 		play: function(){
 			console.log("Play!");
-			d3.select('#mygraph').transition().duration(1500).style('scale', "1 0.2 1").remove();
+			d3.select('#mygraph').transition().duration(1500).attr('scale', "1 0.2 1");
 		}
 	});
 	</script>
