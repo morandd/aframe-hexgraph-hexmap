@@ -3,7 +3,7 @@ Hexmap data viz component, a la deck.gl
 
 This data visualization component is inspired directly by the hexmap layer of (deck.gl). 
 
-![img/example.png]
+!(img/example.png)
 
 Given X/Y input data in a JSON or image file, it bins the data into a hexagonal grid and renders it
 as a BufferGeometry. Tiles can be scaled by height, area, color.
@@ -16,6 +16,7 @@ totally indebted to [Amit's](http://www.redblobgames.com/grids/hexagons/) expana
 ## API
 
 | Attribute | Description | Default |
+| ---  | --- | --- |
 | src | Image or JSON file containing input data |  |
 | scaleArea | Scale tile sizes proportional to value? | false |
 | scaleHeight | Scale tile height proportional to their value? | true |
