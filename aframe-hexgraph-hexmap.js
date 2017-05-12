@@ -60,7 +60,14 @@
 
 		if ("src" in diff || "wdith" in diff ) {
 
-			if (elData.src.search(/\.png/i)>0) {
+			if (elData.src.search(/\.json/i)>0) {
+				d3.json(elData.src, function(json) {
+					elData.rawData = json.data;
+					elData.NROWS = json.data.length;
+					elData.NCOLS = json.data[0].length;
+					thisComponent.update(elData);  // Force re-update
+				}); //end JSON loader
+			} else if (elData.src.length>0){ // Assume it is an image
 				var img = document.querySelectorAll('[src="' + elData.src + '"]');
 				img=img[0];
 				if (img.complete) onImageLoaded(); else img.addEventListener("load",onImageLoaded);
@@ -84,13 +91,7 @@
 				}// onImageLoaded
 
 			} else {
-				d3.json(elData.src, function(json) {
-					elData.rawData = json.data;
-					elData.NROWS = json.data.length;
-					elData.NCOLS = json.data[0].length;
-					thisComponent.update(elData);  // Force re-update
-				}); //end JSON loader
-
+				console.error('aframe-hexgraph-hexmap: src must be specified.'); return;
 			}
 		}
 
@@ -114,23 +115,23 @@
 	     * Convert palette string into array of colors
 	     * We put built-in palettes here too.
 	     */
-	    if (!Array.isArray(data.palette)) {
-	      if ("greypurple" === data.palette) {
+	    if (!Array.isArray(elData.palette)) {
+	      if ("greypurple" === elData.palette) {
 	        elData.palette=['#f7fcfd','#e0ecf4','#bfd3e6','#9ebcda','#8c96c6','#8c6bb1','#88419d','#6e016b'];
-	      } else if ("aquablues" === data.palette) {
+	      } else if ("aquablues" === elData.palette) {
 	        elData.palette = ['#f7fcf0','#e0f3db','#ccebc5','#a8ddb5','#7bccc4','#4eb3d3','#2b8cbe','#08589e'];
-	      } else if ("reds" === data.palette) {
+	      } else if ("reds" === elData.palette) {
 	        elData.palette = ['#fff7ec','#fee8c8','#fdd49e','#fdbb84','#fc8d59','#ef6548','#d7301f','#990000'];
-	      } else if ("redblue" === data.palette) {
+	      } else if ("redblue" === elData.palette) {
 	        elData.palette = ["#2166ac", "#4393c3", "#92c5de", "#d1e5f0", "#fddbc7", "#f4a582", "#d6604d", "#b2182b"];  
-	      } else if ("grass" === data.palette) {
+	      } else if ("grass" === elData.palette) {
 	        elData.palette = ['#ffffe5','#f7fcb9','#d9f0a3','#addd8e','#78c679','#41ab5d','#238443','#006837','#004529'];
-	      } else if ("greens" === data.palette) {
+	      } else if ("greens" === elData.palette) {
 	        elData.palette = ['#78c679','#41ab5d','#238443','#006837','#004529'];
-	      } else if ("autumn" === data.palette) {
+	      } else if ("autumn" === elData.palette) {
 	        elData.palette = ['#ffffe5','#fff7bc','#fee391','#fec44f','#fe9929','#ec7014','#cc4c02','#993404','#662506'];
 	      } else {
-	        elData.palette  = JSON.parse(data.palette.replace(/'/g ,'"'));
+	        elData.palette  = JSON.parse(elData.palette.replace(/'/g ,'"'));
 	      }
 	    }
 
