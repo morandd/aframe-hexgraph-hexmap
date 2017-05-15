@@ -1,9 +1,10 @@
 # aframe-hexgraph-hexmap
-This data visualization component is inspired directly by the hexmap layer of (deck.gl). 
+This data visualization component is inspired directly by the hexmap layer of (http://deck.gl). 
 
 ![alt text](https://raw.githubusercontent.com/morandd/aframe-hexgraph-hexmap/master/img/example.png "Example")
 
 [Demo](https://morandd.github.io/aframe-hexgraph-hexmap/example/)
+
 [GitHub](https://morandd.github.io/aframe-hexgraph-hexmap/)
 
 Given X/Y input data in a JSON or image file, it bins the data into a hexagonal grid and renders it
@@ -86,7 +87,9 @@ This component requires D3 and the von-grid hex grid library.
 ## TODO ##
 - Eliminate dependency on von-grid. At this point so much of the hex logic has been rewritten we do not use much from that library any more.
 - Combine the two .js's into one file
-- Switch to ShaderMaterial so we can scale opacity vertically too (though I'm not 100% sure this will look good)
+- Switch to ShaderMaterial so we can scale opacity vertically too (though not sure this will look good...)
+- Support JSON files that contain X/Y/Value tuples, ie scattered instead of continuous data
+
 
 
 
