@@ -40,8 +40,9 @@ totally indebted to [Amit's](http://www.redblobgames.com/grids/hexagons/) expana
 | opacity | Opacity of the object. | 0.75 |
 
 ### Color Palettes ###
-There are a few built-in palettes: `greypurple`, `aquablues`, `reds`, `redblue`, `grass`, `greens`, and `autumn`. These are taken from
-[ColorBrewer](http://colorbrewer2.org). You can also specify a palette as a JSON array, as shown in the example.
+There are a few built-in palettes:
+  `greypurple`, `aquablues`, `reds`, `redblue`, `RdYlBu`, `grass`, `winter`, `greens`,  `autumn`, `hot`, `viridis`, `plasma`, `parula`, and `cool`.
+These are taken from [ColorBrewer](http://colorbrewer2.org). See `MATLAB_PALETTE.md` for example of converting MATLAB colormaps to JSON. You can also specify a palette as a JSON array, as shown in the example.
 
 
 ### Animating ###
@@ -54,7 +55,7 @@ You can also adjust the opacity of the geometry similarly: `document.querySelect
 # Input data #
 As an image: provide an image URL or aframe asset tag (like "#myImg") as the src. The value will be read from the Red pixel, but greyscale images work fine too (and compress better).
 
-As JSON: provide a URL or aframe asset tag pointing to a .json file. The file should contain only a two-dimensional numeric array as shown in the example .json file. For example the data:
+As JSON: provide a URL or aframe asset tag pointing to a .json file. The file should contain only a two-dimensional numeric array as shown in the example .json file. For example the matrix:
 ```
 1 2 3 
 4 5 6
@@ -87,7 +88,7 @@ This component requires D3 and the von-grid hex grid library.
 ## TODO ##
 - Eliminate dependency on von-grid. At this point so much of the hex logic has been rewritten we do not use much from that library any more.
 - Combine the two .js's into one file
-- Switch to ShaderMaterial so we can scale opacity vertically too (though not sure this will look good...)
+- Add options to tune material. Or change to check if a material= component is attached to the same entity, and then use that instead.
 - Support JSON files that contain X/Y/Value tuples, ie scattered instead of continuous data
 
 
