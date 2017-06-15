@@ -42,6 +42,7 @@
 	update: function (oldData) {
 		var thisComponent = this;
 		var elData = this.data;
+		var data = this.data;
 
 		var el = this.el;
 		var diff = AFRAME.utils.diff(elData, oldData);
@@ -196,7 +197,7 @@
 			.range(G.Zrange);
 		G.Xrange = [G.Xrange[0]*1/(vg.SQRT3), G.Xrange[1]*1/(vg.SQRT3) ];
 		G.scaleDataColIntoWorld = d3.scaleLinear().domain([1,NCOLS]).range(G.Xrange);
-		G.scaleColor = d3.scaleQuantize().domain([0, 1]).range(elData.palette);
+		G.scaleColor = d3.scaleQuantize().domain([0, 1]).range(this.palette);
 
 
 
