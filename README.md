@@ -33,12 +33,20 @@ totally indebted to [Amit's](http://www.redblobgames.com/grids/hexagons/) expana
 | NODATA_VALUE | Cells with this value will not be rendered | -999 |
 | tileScale | How much of each hex grid should be occupied by the rendered tile? | 0.7 |
 | showZerovalCells | Render cells with value=0? | false |
-| metalness | Control material appearance. | 0.2 |
 | hexDensity | Density of hex grid relative to input data.  Using higher values, up to 1, will create more hexagons. | 0.3 |
 | hexDensityMobile | On mobile devices this value will be used instead of hexDensity | 0.1 |
 | shading | Material shading model: "flat" or "smooth" | flat |
+| emissive | Emissive color. Used for material | #000000
 | emissiveIntensity | Control brightness of the material | 0.2 |
+| metalness | Control material appearance. | 0.2 |
+| rougness | Control material rougness | 0.5 |
+| shininess | Control material shininess | 30 |
+| specular | Control material specular color | #111111
+| blending | THREE.js blending mode, as string | THREE.NormalBlending |
 | opacity | Opacity of the object. | 0.75 |
+
+
+
 
 ### Color Palettes ###
 There are a few built-in palettes:
@@ -80,7 +88,6 @@ This component requires D3 and the von-grid hex grid library.
 	<script src="//d3js.org/d3.v4.min.js"></script>
 	<script src="https://morandd.github.io/aframe-hexgraph-hexmap/hex-grid.min.js"></script>
 	<script src="https://morandd.github.io/aframe-hexgraph-hexmap/aframe-hexgraph-hexmap.js"></script>
-	<script src="https://morandd.github.io/aframe-hexgraph-hexmap/HexGridBufGeom.js"></script>
 
 ```
 
@@ -88,8 +95,7 @@ This component requires D3 and the von-grid hex grid library.
 
 ## TODO ##
 - Eliminate dependency on von-grid. At this point so much of the hex logic has been rewritten we do not use much from that library any more.
-- Combine the two .js's into one file
-- Add options to tune material. Or change to check if a material= component is attached to the same entity, and then use that instead.
+- If AFrame adds support for vertexColors=THREE.VertexColoring to the material component, change to read material options from a `material` component
 - Support JSON files that contain X/Y/Value tuples, ie scattered instead of continuous data
 
 

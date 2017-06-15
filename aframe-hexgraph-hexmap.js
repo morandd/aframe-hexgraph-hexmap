@@ -13,18 +13,23 @@
 		NODATA_VALUE:    { type: "number", default:-9999},
 		tileScale:       { type: "number", default: 0.7}, // How much of the hex cell to fill with a rendered tiles
 		showZerovalCells:{ type: "boolean", default: false}, // Render cells with zero value
-		metalness:       { type: "number", default:0.2},
 		hexDensity:      { type: "number", default:0.3},
 		hexDensityMobile:{ type: "number", default:0.1},
 
-		palette:          { type: "string", default: 'redblue'},
-		flipPalette:      { type: "boolean", default: false},
-		scaleHeight:      { type: "boolean", default: true},  // Scale the height of each hex tile according to its value?
-		scaleArea:        { type: "boolean", default: true}, // Scale the area of each hex tile according to its value?
+		palette:         { type: "string", default: 'redblue'},
+		flipPalette:     { type: "boolean", default: false},
+		scaleHeight:     { type: "boolean", default: true},  // Scale the height of each hex tile according to its value?
+		scaleArea:       { type: "boolean", default: true}, // Scale the area of each hex tile according to its value?
 
-		shading: 		  {type:"string", default:"flat"}, // can be "flat" or "smooth"
-		emissiveIntensity:{type:"number", default:0.2},
-		opacity:          { type:"number", default: 0.75 }
+		shading: 		 { type:"string", default:"flat"}, // can be "flat" or "smooth"
+		opacity:         { type:"number", default: 0.75 },
+		emissive: 		 { type: 'color', default: '#000000'},
+		emissiveIntensity:{ type:"number", default:0},
+		metalness:       { type: "number", default:0.5},
+		shininess: 		 { type: 'number', default: 30}, 
+		roughness: 		 { type: 'number', default: 0.5},
+		blending: 	     { type: 'string', default: 'THREE.NormalBlending'},
+		specular:        { type: 'color', default: '#111111'}
 	},
 
 
@@ -273,20 +278,24 @@
 		var meshBaseColor = elData.palette.length==1 ? new THREE.Color(elData.palette[0]) : 0xffffff;
 		var meshVertexColoring = elData.palette.length==1 ?  THREE.NoColors : THREE.VertexColors;
 
-		material =new THREE.MeshLambertMaterial({color:0xffffff, emissive: 0xffffff, emissiveIntensity: 0.1, wireframe: false, vertexColors:THREE.VertexColors  });
-		material =new THREE.MeshPhongMaterial({color:0xffffff, emissive: 0xffffff, emissiveIntensity: 0.1,shininess: 30,  wireframe: false, vertexColors:THREE.VertexColors  });
-		material =new THREE.MeshStandardMaterial({color:0xffffff, emissive: 0xffffff, emissiveIntensity: 0.1, metalness:0, roughness:0, wireframe: false, vertexColors:THREE.VertexColors  });
+		//material =new THREE.MeshLambertMaterial({color:0xffffff, emissive: 0xffffff, emissiveIntensity: 0.1, wireframe: false, vertexColors:THREE.VertexColors  });
+		//material =new THREE.MeshPhongMaterial({color:0xffffff, emissive: 0xffffff, emissiveIntensity: 0.1,shininess: 30,  wireframe: false, vertexColors:THREE.VertexColors  });
+		//material =new THREE.MeshStandardMaterial({color:0xffffff, emissive: 0xffffff, emissiveIntensity: 0.1, metalness:0, roughness:0, wireframe: false, vertexColors:THREE.VertexColors  });
 		material =new THREE.MeshStandardMaterial({color:0xffffff, emissive: 0xffffff, emissiveIntensity: 0.1, transparent:true, opacity:elData.opacity, metalness:0, roughness:0, wireframe: false, vertexColors:THREE.VertexColors  });
 
 		material =new THREE.MeshStandardMaterial({
 			color:0xffffff,
-			//emissive: 0xffffff,
+			emissive: elData.emissive,
 			emissiveIntensity:  elData.emissiveIntensity,
 			wireframe: false,
 			opacity: elData.opacity,
 			shading: elData.shading=="flat" ? THREE.FlatShading : THREE.SmoothShading,
 			metalness: elData.metalness,
+			//shininess: elData.shininess,
+			roughness: elData.roughness,
+			blending: eval(elData.blending),
 			transparent: elData.opacity!=1,
+			//specular: elData.specular,
 			vertexColors:THREE.VertexColors
 		});
 
@@ -294,6 +303,7 @@
 		var materialWireframe = new THREE.MeshBasicMaterial({color:elData.wireframeColor, wireframe:true, vertexColors:meshVertexColoring});
 
 
+		//material = new THREE.MeshNormalMaterial({vertexColors:THREE.VertexColors});
 
 
 		/*
@@ -348,3 +358,424 @@
 		opacity:elData.opacity
 	});
 	*/
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+vg.HexGrid.prototype.generateTilesBufGeom  = function(config) {
+	config = config || {};
+	var tiles = [];
+	var settings = {
+		tileScale: 0.95,
+		cellSize: this.cellSize,
+		scaleColor: true, // Optional array of cell colors, to apply colors to all vertices of each grid cell
+		scaleHeight: true,
+		scaleArea: false,
+		scaleAreaField: "area", // Key in grid.cell.userData that contains the area scaling factor. Should be in range [0-1]
+		scaleColorField: "color",
+		valField: "val", // Key in cell.userData that contains the value used for height scaling
+
+		showZerovalCells: true,
+		extrudeSettings: {
+			amount: 1,
+			bevelEnabled: false,
+			bevelSegments: 1,
+			steps: 1,
+			bevelSize: 0.5,
+			bevelThickness: 0.5
+		}
+	};
+	settings = vg.Tools.merge(settings, config);
+
+
+
+	// overwrite with any new dimensions
+	this.cellSize = settings.cellSize;
+	this._cellWidth = this.cellSize * 2;
+	this._cellLength = (vg.SQRT3 * 0.5) * this._cellWidth;
+
+
+	this.autogenerated = true;
+
+
+
+
+
+	/*
+	 * Set up a template Geometry item of an extruded hexagon
+	 */
+	var templateGeometry;
+	if (settings.scaleHeight) {
+		templateGeometry = new THREE.ExtrudeGeometry(this.cellShape, settings.extrudeSettings);
+		//templateGeometry.computeVertexNormals();
+		//__private__reverseFaces(templateGeometry);
+		//templateGeometry.computeFaceNormals();
+	} else {
+		templateGeometry = __private__reverseFaces(this.cellShapeGeo);
+	}
+
+	// Apply tileScale (this affects the x and y scale; height (z) is treated separately)
+	if (settings.tileScale!=1){
+		for (var v=0; v<templateGeometry.vertices.length;v++){
+			templateGeometry.vertices[v].x*=settings.tileScale;
+			templateGeometry.vertices[v].y*=settings.tileScale;
+		}
+	}
+
+	/*
+	 * If we're doing extruded cylinders, we can drop the faces on the floor as they're not visible. This provides a decent speedup.
+	 */
+	 
+	if (settings.scaleHeight){
+		var tmp=[];
+		for (f=0; f<templateGeometry.faces.length; f++) {
+			if (templateGeometry.vertices[templateGeometry.faces[f].c].z===0 && templateGeometry.vertices[templateGeometry.faces[f].b].z===0 && templateGeometry.vertices[templateGeometry.faces[f].a].z===0){
+				// Skip this face 
+			} else {
+				tmp.push (templateGeometry.faces[f]);
+			}
+		}
+		templateGeometry.faces = tmp;
+	}
+	templateGeometry.rotateX(-90 * (Math.PI/180));
+
+
+	var geo       = new THREE.BufferGeometry();
+	var NCELLS    = 0; // Number of cells that we actually have to render is less than this.
+	var NODATA_VAL = this.NODATA;
+
+	/*
+	 * Prune out empty gridcells
+	 */
+	this.cellValsAsArray.forEach(function(v,idx) {
+		if (v!==NODATA_VAL && (v!==0 || settings.showZerovalCells)) NCELLS++;
+	});
+	console.assert(NCELLS!==0, ('showZerovalCells was false, but all cells are empty?!'));
+
+
+	var NVERTS    = NCELLS * templateGeometry.faces.length * 3;
+	var vertices  = new Float32Array( NVERTS * 3 );
+	var normals   = new Float32Array( NVERTS * 3 );
+	var vcolors = null;
+	if (settings.scaleColor) { vcolors   = new Float32Array( NVERTS * 3 ); }
+
+
+	/*
+	 * Now we actually manipulate the BufferGeometry: adjust the vertex Z coordinates and vertex colors.
+	 */
+	var vi=0, vci=0, uvi=0,f, val, vert, pos,clr, sh, sa;
+	var vA, vB, vC;
+	var cellValIdx=0; // index into 
+	var thisHexGrid = this;
+
+	for (var ci=0; ci<this.cellValsAsArray.length; ci++){
+
+		val = this.cellValsAsArray[ci];
+
+		if (val==this.NODATA) continue;
+		if (!settings.showZerovalCells && val===0 ) continue;
+
+		if (vcolors) {
+			clr = this.cellColorsAsArray[ci];
+			clr = (clr instanceof THREE.Color) ? clr : new THREE.Color(clr);
+		}
+		sa = settings.scaleArea ? (this.cellAreasAsArray[ci] || 0) : 1;
+		sh = settings.scaleHeight ? Math.max(0.1, this.cellHeightsAsArray[ci]) : 1;
+
+		pos = this.idx2xyz(ci);
+		var hexCellX = pos[0] + this.renderOffsetX || 0; 
+		var hexCellY = pos[2] + this.renderOffsetZ || 0;
+
+		var pA = new THREE.Vector3();
+		var pB = new THREE.Vector3();
+		var pC = new THREE.Vector3();
+		var cb = new THREE.Vector3();
+		var ab = new THREE.Vector3();
+
+		for (f=0; f<templateGeometry.faces.length; f++) {
+
+			var faceNormal = templateGeometry.faces[f].normal;
+
+			// Vertices are X,Y,Z sequence, so by putting faces.y into vertex Z we do the rotation so that Z axis faces the sky instead of the camera
+
+			var ax = templateGeometry.vertices[templateGeometry.faces[f].a].x*sa + hexCellX;
+			var ay = Math.max(1e-6, templateGeometry.vertices[templateGeometry.faces[f].a].y*sh);
+			var az = templateGeometry.vertices[templateGeometry.faces[f].a].z*sa + hexCellY;
+
+			var bx = templateGeometry.vertices[templateGeometry.faces[f].b].x*sa + hexCellX;
+			var by = Math.max(1e-6, templateGeometry.vertices[templateGeometry.faces[f].b].y*sh);
+			var bz = templateGeometry.vertices[templateGeometry.faces[f].b].z*sa + hexCellY;
+
+			var cx = templateGeometry.vertices[templateGeometry.faces[f].c].x*sa + hexCellX;
+			var cy = Math.max(1e-6, templateGeometry.vertices[templateGeometry.faces[f].c].y*sh);
+			var cz = templateGeometry.vertices[templateGeometry.faces[f].c].z*sa + hexCellY;
+
+			
+
+			pA.set( ax, ay, az );
+			pB.set( bx, by, bz );
+			pC.set( cx, cy, cz );
+
+			cb.subVectors( pC, pB );
+			ab.subVectors( pA, pB );
+			cb.cross( ab );
+
+			cb.normalize();
+
+			var nx = cb.x;
+			var ny = cb.y;
+			var nz = cb.z;
+
+
+			normals[vi+0] = nx;
+			normals[vi+1] = ny;
+			normals[vi+2] = nz;
+
+			normals[vi+3] = nx;
+			normals[vi+4] = ny;
+			normals[vi+5] = nz;
+
+			normals[vi+6] = nx;
+			normals[vi+7] = ny;
+			normals[vi+8] = nz;
+
+			vertices[vi++] = ax;
+			vertices[vi++] = ay;
+			vertices[vi++] = az;
+
+			vertices[vi++] = bx;
+			vertices[vi++] = by;
+			vertices[vi++] = bz;
+
+			vertices[vi++] = cx;
+			vertices[vi++] = cy;
+			vertices[vi++] = cz;
+
+			if (vcolors){
+				vcolors[vci++] = clr.r;
+				vcolors[vci++] = clr.g;
+				vcolors[vci++] = clr.b;
+				vcolors[vci++] = clr.r;
+				vcolors[vci++] = clr.g;
+				vcolors[vci++] = clr.b;
+				vcolors[vci++] = clr.r;
+				vcolors[vci++] = clr.g;
+				vcolors[vci++] = clr.b;
+			}
+
+		} // foreach face
+
+	}// foreach cell tile
+
+
+	/*
+	 * Update the BufferGeometry 
+	 */
+	geo.addAttribute( 'normal', new THREE.BufferAttribute( normals, 3 ) );
+	geo.addAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+	if (vcolors) geo.addAttribute( 'color', new THREE.BufferAttribute( vcolors, 3 ) );
+
+
+
+	return geo;
+
+};
+
+
+
+
+Array.prototype.max = function() {
+  return Math.max.apply(null, this);
+};
+
+Array.prototype.min = function() {
+  return Math.min.apply(null, this);
+};
+Array.prototype.abs = function() {
+	return this.map(function(v) {return Math.abs(v);});
+};
+
+
+
+
+
+
+// create a flat, hexagon-shaped grid
+vg.HexGrid.prototype.generateCellsAsArray = function(config) {
+	config = config || {};
+	this.size = typeof config.size === 'undefined' ? this.size : config.size;
+	this.NODATA = -9998; // Empty (sparse'd) entries in cellValsAsArray are marked by this value.
+	this.cellValsAsArray = new Float32Array((this.size*2 + 1)*(this.size*2 + 1)).fill(this.NODATA);
+	this.cellHeightsAsArray = new Float32Array((this.size*2 + 1)*(this.size*2 + 1));
+	this.cellAreasAsArray = new Float32Array((this.size*2 + 1)*(this.size*2 + 1));
+	this.cellColorsAsArray = [];
+	this.numCells = this.cellValsAsArray.length;
+};
+
+
+// create a flat, hexagon-shaped grid
+vg.HexGrid.prototype.generateSquareBoardAsArray = function(config) {
+	config = config || {};
+	this.size = typeof config.size === 'undefined' ? this.size : config.size;
+	this.NONEXISTENT_CELL = -9999; // Empty (sparse'd) entries in cellValsAsArray are marked by this value.
+	this.cellValsAsArray = new Float32Array((this.size*2 + 1)*2);
+	this.cellHeightsAsArray = new Float32Array((this.size*2 + 1)*2);
+	this.cellAreasAsArray = new Float32Array((this.size*2 + 1)*2);
+	this.cellColorsAsArray = [];
+	this.numCells = this.cellValsAsArray.length;
+	//this.isSquareBoard = true;
+};
+
+
+/*
+	Cases for testing/validating coordinate transforms:
+	var testqr = qrs2qr([3, 0, -3]);
+	var testidx = grid.qrs2idx([3,0,-3]);
+	var test2 = grid.qr2idx(testqr);
+	var testqrs = grid.idx2qrs(testidx);
+*/
+
+
+// grid cell (Hex in cube coordinate space) to position in pixels/world
+vg.HexGrid.prototype.__private__cellToPixel  = function(cell) {
+	return [cell.q * this._cellWidth * 0.75, 0, -((cell.s - cell.r) * this._cellLength * 0.5)];
+};
+
+// grid cell coordinate (in cube coordinate space) to position in pixels/world
+vg.HexGrid.prototype.qrs2xyz  = function(qrs) {
+	if (qrs===null) return null;
+	if (qrs.reduce(function(a, b) {return a + b;}, 0) !== 0) return null;
+
+	return [qrs[0] * this._cellWidth * 0.75, 0, -((qrs[2] - qrs[1]) * this._cellLength * 0.5)];
+};
+// grid cell coordinates into index into a linear array of all cells in this grid
+vg.HexGrid.prototype.qr2idx  = function(qr) {
+	if (qr===null) return null;
+	if (qr2qrs(qr)===null) return null;
+	// Hexagonal board constraint:
+	if (Math.abs(qr[0]+qr[1])>this.size) return null;
+
+	var _NCOLS = (this.size*2)+1;
+	var N = this.size;
+	return ((qr[1]+N) * _NCOLS) +  (qr[0] + N + Math.min(qr[1],0));
+};
+
+
+vg.HexGrid.prototype.qrs2idx  = function(qrs) {
+
+	if (qrs.reduce(function(a, b) {return a + b;}, 0) !== 0) return null;
+	if (qrs.abs().max()>this.size)
+		return null;
+
+	var qr = [qrs[0], qrs[2]];
+	// Hexagonal board constraint:
+	if (Math.abs(qr[0]+qr[1])>this.size) return null;
+	var _NCOLS = (this.size*2)+1;
+	var N = this.size;
+	return ((qr[1]+N) * _NCOLS) +  (qr[0] + N + Math.min(qr[1],0));
+
+	/* Long-winded version:
+	// Convert from cube coordinates (which amit calls x/y/z but vonGrid calls qrs)
+	// to axial coordinates, which amit calls Q/R. Not confusing at all.
+	var axq = qrs[0]; // qrs[0] is "x" in Amit's cube coordinates
+	var axr = qrs[2]; // qrs[2] is "z" in Amit's cube coordinates.
+
+	var _NROWS = (this.size*2)+1;
+	var _row = axr+this.size;
+	var _col = axq + this.size + Math.min(0.0, axr);
+	return (_row*_NROWS*1.0) + _col;
+	*/
+};
+
+// grid cell coordinates into index into a linear array of all cells in this grid
+vg.HexGrid.prototype.idx2qrs  = function(idx) {
+
+	var _NCOLS = (this.size*2)+1;
+	var N = this.size;
+
+	var _row = Math.floor( idx / _NCOLS );
+	var _col = (idx % _NCOLS) ;
+	var r = _row - N;
+	var q = _col - N - Math.min(r,0);
+	return qr2qrs([q,r]);
+
+};
+vg.HexGrid.prototype.idx2xyz  = function(idx) {
+	if (idx===null) return null;
+	return this.qrs2xyz(this.idx2qrs(idx));
+};
+
+vg.HexGrid.prototype.xyz2qrs  = function(xyz) {
+	if (xyz===null) return null;
+	// convert a position in world space ("pixels") to cell coordinates
+	var q = xyz[0] * (vg.HexGrid.TWO_THIRDS / this.cellSize);
+	var r = ((-xyz[0] / 3) + (vg.SQRT3/3) * xyz[2]) / this.cellSize;
+	return __private_cubeRoundQRS([q, r, -q-r]);
+};
+vg.HexGrid.prototype.xyz2idx  = function(xyz) {
+	if (xyz===null) return null;
+	var q = xyz[0] * (vg.HexGrid.TWO_THIRDS / this.cellSize);
+	var r = ((-xyz[0] / 3) + (vg.SQRT3/3) * xyz[2]) / this.cellSize;
+	return this.qrs2idx(__private_cubeRoundQRS([q, r, -q-r]));
+};
+
+function qrs2qr(qrs){
+    return [qrs[0], qrs[2]];
+}
+function qr2qrs(qr){
+	return [qr[0], -qr[0]-qr[1]   ,qr[1]];
+}
+
+// Same as cubeRound, but operates on a QRS tuple instead of a cell object
+function __private_cubeRoundQRS(qrs){
+		if (qrs===null) return null;
+
+		var rx = Math.round(qrs[0]);
+		var ry = Math.round(qrs[1]);
+		var rz = Math.round(qrs[2]);
+
+		var xDiff = Math.abs(rx - qrs[0]);
+		var yDiff = Math.abs(ry - qrs[1]);
+		var zDiff = Math.abs(rz - qrs[2]);
+
+		if (xDiff > yDiff && xDiff > zDiff) {
+			rx = -ry-rz;
+		}
+		else if (yDiff > zDiff) {
+			ry = -rx-rz;
+		}
+		else {
+			rz = -rx-ry;
+		}
+
+		return [rx, ry, rz];
+}
+
+
+
+// Reverses the order of the A,B,C points on each face so that any normals will point -180 degrees
+// Used because the default hex geometry normal faces down, not up along the Y axis. So we have to 
+// flip it so that a camera at Y>0 position can see it. Alternatively, one could use a material with 
+// side==THREE.SideDouble to render both sides. But this is prolly faster.
+function __private__reverseFaces(a){
+	for (var f=0; f<a.faces.length; f++) {
+		var vA = a.faces[f].c;
+		var vB = a.faces[f].b;
+		var vC = a.faces[f].a;
+		a.faces[f].a =vA;
+		a.faces[f].b =vB;
+		a.faces[f].c =vC;
+		a.faces[0].normal.multiplyScalar(-1);
+	}
+	return a;
+}

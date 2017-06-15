@@ -42,7 +42,13 @@ vg.HexGrid.prototype.generateTilesBufGeom  = function(config) {
 	/*
 	 * Set up a template Geometry item of an extruded hexagon
 	 */
-	var templateGeometry = settings.scaleHeight ? new THREE.ExtrudeGeometry(this.cellShape, settings.extrudeSettings) : __private__reverseFaces(this.cellShapeGeo);
+	var templateGeometry;
+	if (settings.scaleHeight) {
+		templateGeometry = new THREE.ExtrudeGeometry(this.cellShape, settings.extrudeSettings);
+		templateGeometry.computeFaceNormals();
+	} else {
+		templateGeometry = __private__reverseFaces(this.cellShapeGeo);
+	}
 	// Apply tileScale
 	if (settings.tileScale!=1){
 		for (var v=0; v<templateGeometry.vertices.length;v++){
