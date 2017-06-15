@@ -18,6 +18,7 @@
 		hexDensityMobile:{ type: "number", default:0.1},
 
 		palette:          { type: "string", default: 'redblue'},
+		flipPalette:      { type: "boolean", default: false},
 		scaleHeight:      { type: "boolean", default: true},  // Scale the height of each hex tile according to its value?
 		scaleArea:        { type: "boolean", default: true}, // Scale the area of each hex tile according to its value?
 
@@ -241,7 +242,8 @@
 		for (idx=0; idx<grid.numCells; idx++) {
 			if (grid.cellValsAsArray[idx]===grid.NODATA) continue;
 			grid.cellValsAsArray[idx] =  grid.cellValsAsArray[idx]/maxBin;
-			grid.cellColorsAsArray[idx] = elData.palette.length==1 ? elData.palette[0] : G.scaleColor(grid.cellValsAsArray[idx]);
+
+			grid.cellColorsAsArray[idx] = elData.palette.length==1 ? elData.palette[0] : G.scaleColor(data.flipPalette ? (1-grid.cellValsAsArray[idx]) : grid.cellValsAsArray[idx]);
 			grid.cellHeightsAsArray[idx] = grid.cellValsAsArray[idx] || 0;
 			grid.cellAreasAsArray[idx] = Math.min(0.5, Math.max(0.3, (Math.log(grid.cellValsAsArray[idx])+1)/Math.log(1.8)));
 		}

@@ -25,6 +25,7 @@ totally indebted to [Amit's](http://www.redblobgames.com/grids/hexagons/) expana
 | scaleArea | Scale tile sizes proportional to value? | false |
 | scaleHeight | Scale tile height proportional to their value? | true |
 | palette | A predefined palette or palette as JSON string | redblue |
+| flipPalette | Reverse the palette directions? | false |
 | width | Width of map, in AFRAME units. | 1 |
 | wireframeOn | Display wireframe overlay? | false |
 | wireframeColor | Color of wireframe | #fff |
