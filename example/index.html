@@ -16,9 +16,7 @@
 	<script src="//d3js.org/d3.v4.min.js"></script>
 
 	<script src="hex-grid.min.js"></script>
-
 	<script src="../aframe-hexgraph-hexmap.js"></script>
-	<script src="../HexGridBufGeom.js"></script>
 
 
  	<script>
@@ -28,7 +26,6 @@
 		},
 		play: function(){
 			console.log("Play!");
-			d3.select('#mygraph').transition().duration(1500).attr('scale', "1 0.2 1");
 		}
 	});
 	</script>
@@ -86,17 +83,61 @@
 		<img id="sampledata2" src="asia_small.png" style="display:none"/>
 	  </a-assets>
 
-	<a-sky color="#aaa"></a-sky>
+	<a-sky color="#dedede"></a-sky>
 
-	<a-entity id="mygraph" aframe-hexgraph-hexmap="src:#sampledata2; width:5; scaleArea:false; opacity:1; scaleHeight:true; showZerovalCells:false; tileScale:0.7; wireframeOn:false; hexDensity:0.45; hexDensityMobile:0.33, wireframeColor:#000; palette: ['#fff7ec','#fee8c8','#fdd49e','#fdbb84','#fc8d59','#ef6548','#d7301f','#990000']" scale="1 0 1" >
+	<a-entity id="mygraph" aframe-hexgraph-hexmap="
+		src:#sampledata2;
+		width:5;
+		scaleArea:false;
+		opacity:1;
+		scaleHeight:true;
+		showZerovalCells:false;
+		tileScale:0.7;
+		wireframeOn:false;
+		hexDensity:0.45;
+		hexDensityMobile:0.33,
+		metalness: 0.58,
+		rougness: 1,
+		wireframeColor:#000;
+		palette: viridis" scale="1.5 0.01 1.5" >
+
+		  <a-animation attribute="scale"
+               dur="4000"
+               delay="200"
+               easing="ease-out"
+               direction="alternate"
+               fill="forwards"
+               to="2 0.5 2"></a-animation>
+
 	</a-entity>
 
 
 
+	<!-- Tasteful lighting is important -->
+	<a-entity light="type: ambient; color: #fff; intensity: 1.99"></a-entity>
+	<a-entity light="color:white; type: point; target:target; intensity:.7"  position="-35 50 0"></a-entity>
+	<a-entity light="color:white; type: point; target:target; intensity:1.1"  position="35 50 0"></a-entity>
 
-	<a-entity camera look-controls wasd-controls="fly:true" mouse-cursor="" position="1 1 2">
-	</a-entity>
 
+		<a-entity
+            camera="active:true"
+            id="camera_orbit"
+            position="0 3 6"
+			wasd-controls="fly:true" 
+			orbit-controls="
+                autoRotate: false;
+                target: #mygraph;
+                enableDamping: true;
+                dampingFactor: 0.125;
+                rotateSpeed:0.15;
+				zoomSpeed:0.5;
+				minPolarAngle: 0.7;
+				maxPolarAngle:1.3;
+				maxAzimuthAngle:1.2;
+				minAzimuthAngle: -1.2;
+                minDistance:1;
+                maxDistance:100;">
+		</a-entity>
 	
 </a-scene>
 
