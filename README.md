@@ -86,8 +86,8 @@ This component requires D3 and the von-grid hex grid library.
 
 ```
 	<script src="//d3js.org/d3.v4.min.js"></script>
-	<script src="https://morandd.github.io/aframe-hexgraph-hexmap/hex-grid.min.js"></script>
-	<script src="https://morandd.github.io/aframe-hexgraph-hexmap/aframe-hexgraph-hexmap.js"></script>
+	<script src="https://cdn.rawgit.com/morandd/aframe-hexgraph-hexmap/master/hex-grid.min.js"></script>
+	<script src="https://cdn.rawgit.com/morandd/aframe-hexgraph-hexmap/v0.0.6/aframe-hexgraph-hexmap.js"></script>
 
 ```
 
