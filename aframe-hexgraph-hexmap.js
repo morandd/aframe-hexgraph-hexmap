@@ -1,3 +1,14 @@
+window.tic = function(){
+  return new Date();
+};
+
+// Return elapsed milisconds
+window.toc = function(ticStart){
+  var elapsed = new Date() - ticStart;
+  //elapsed = elapsed.getTime();
+  return (elapsed/1000).toFixed(2) ;
+};
+
 
 
 
@@ -64,19 +75,30 @@
 		}
 
 
+        this.t_load = window.tic();
+
 
 		if ("src" in diff || "wdith" in diff ) {
 
-			if (elData.src.search(/\.json/i)>0) {
+			var isJSON = (typeof elData.src==="string") && (elData.src.length>0) && (elData.src.search(/\.json/i)>0);
+
+			if (isJSON) {
 				d3.json(elData.src, function(json) {
 					elData.rawData = json.data;
 					elData.NROWS = json.data.length;
 					elData.NCOLS = json.data[0].length;
 					thisComponent.update(elData);  // Force re-update
 				}); //end JSON loader
-			} else if (elData.src.length>0){ // Assume it is an image
-				var img = document.querySelectorAll('[src="' + elData.src + '"]');
-				img=img[0];
+			} else { // Assume it is an Image object or a image name (string)
+				var img;
+		        if (typeof elData.src === "string") {
+		        	img = document.querySelectorAll('[src="' + elData.src + '"]');
+			      	if (img.length===0) {
+						console.error('Cannot find an HTML <img> element on this page with src='+elData.src );
+						return;
+			      	}
+			      	img=img[0];
+			    }  // Now img is an Image object or Element object
 				if (img.complete) onImageLoaded(); else img.addEventListener("load",onImageLoaded);
 				return;
 				function onImageLoaded(){
@@ -97,8 +119,6 @@
 					thisComponent.update(elData);  // Force re-update
 				}// onImageLoaded
 
-			} else {
-				console.error('aframe-hexgraph-hexmap: src must be specified.'); return;
 			}
 		}
 
@@ -108,7 +128,8 @@
 		 * Here we can draw any bits that do not care about the JSON data
 		 */
 
-		console.timeEnd("aframe-hexgraph-hexmap init and load data");
+        this.t_load = window.toc(this.t_load);
+
 
 
 		// We bail out of the update() function here if we haven"t loaded the JSON data yet
@@ -214,13 +235,15 @@
 		var maxBin=0;
 		var xoff,yoff,qrs, idx;
 
-		console.time("aframe-hexgraph-hexmap: binning data");
+		this.t_bin = window.tic();
+
+		var randomPool = []; for (var i=0; i<100; i++) randomPool.push(Math.random()*0.001);
 
 		for (var rw=0; rw<NROWS; rw++){
 			for (var cl=0; cl<NCOLS; cl++){
 				val = elData.rawData instanceof Uint8Array ? elData.rawData[rw*NCOLS + cl] : elData.rawData[rw][cl];
-				xoff=Math.random() * 0.001; // A bit of wiggle here helps prevent Moire patterns
-				yoff = Math.random() * 0.001;
+				xoff=randomPool[rw*cl % randomPool.length]  ; // A bit of wiggle here helps prevent Moire patterns
+				yoff= randomPool[(rw*5)*cl % randomPool.length]  ;
 				idx = grid.xyz2idx([G.scaleDataColIntoWorld(cl+1)+xoff, 0, G.scaleDataRowIntoWorld(rw+1)+yoff]);
 				if (idx===null) continue;
 				if (grid.cellValsAsArray[idx]==grid.NODATA) {
@@ -236,14 +259,14 @@
 			} //foreach data column
 		} // foreach data row
 
-		console.timeEnd("aframe-hexgraph-hexmap: binning data");
+		this.t_bin = window.toc(this.t_bin);
 
 
 
 		/*
 		 * Normalize cell values to [0-1] range
 		 */
-		console.time("aframe-hexgraph-hexmap: normalizing cells");
+		this.t_norm = window.tic();
 		var c;
 		for (idx=0; idx<grid.numCells; idx++) {
 			if (grid.cellValsAsArray[idx]===grid.NODATA) continue;
@@ -253,13 +276,14 @@
 			grid.cellHeightsAsArray[idx] = grid.cellValsAsArray[idx] || 0;
 			grid.cellAreasAsArray[idx] = Math.min(0.5, Math.max(0.3, (Math.log(grid.cellValsAsArray[idx])+1)/Math.log(1.8)));
 		}
-		console.timeEnd("aframe-hexgraph-hexmap: normalizing cells");
+		this.t_norm = window.toc(this.t_norm);
 
 
 
 		/*
 		 * Generate THREE.BufferGeometry mesh based on the cell values
 		*/
+		this.t_geom = window.tic();
 		var geo = grid.generateTilesBufGeom({
 			tileScale: elData.tileScale,
 			scaleHeight: elData.scaleHeight,
@@ -267,7 +291,7 @@
 			scaleColor:  elData.palette.length>1,
 			showZerovalCells:elData.showZerovalCells
 		});
-
+		this.t_geom = window.toc(this.t_geom);
 
 
 
@@ -324,6 +348,8 @@
 			}
 		}
 
+		console.log('aframe-hexgraph: Done in ' + (this.t_load*1+this.t_norm*1+this.t_bin*1+this.t_geom*1) + 
+			's. (Load ' + this.t_load +'s, normalize ' + this.t_norm +', bin ' + this.t_bin + ', geometry '+this.t_geom +')');
 
 
 	}, // end update() function
