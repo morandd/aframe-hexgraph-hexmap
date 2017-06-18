@@ -18,6 +18,7 @@ window.toc = function(ticStart){
 		// Basic data
 		src:         	 { type: "asset"},
 		width:           { type: "number", default: 1 },
+		invertElevation: { type: "boolean", default: false},
 		wireframeOnly:   { type: "boolean", default:false},
 		wireframeOn:     { type: "boolean", default:false}, // If you set this, maybe you also want to provide a palette consisting of a single color
 		wireframeColor:  { type: "color", default:"#fff"},
@@ -26,6 +27,8 @@ window.toc = function(ticStart){
 		showZerovalCells:{ type: "boolean", default: false}, // Render cells with zero value
 		hexDensity:      { type: "number", default:0.3},
 		hexDensityMobile:{ type: "number", default:0.1},
+
+		animatedLoading:     { type: "boolean", default: true},
 
 		palette:         { type: "string", default: 'redblue'},
 		flipPalette:     { type: "boolean", default: false},
@@ -63,6 +66,7 @@ window.toc = function(ticStart){
 		var el = this.el;
 		var diff = AFRAME.utils.diff(elData, oldData);
 
+		//if (Object.keys(diff).length===0) return;
 
 		/*
 		 * In case just opacity is being animated:
@@ -138,6 +142,14 @@ window.toc = function(ticStart){
 			return;
 		}
 
+		if (this.animatedLoading && !d3 ) {
+			console.log('aframe-hexgraph-hexmap: d3 must be loaded for animatedLoaded:true to do anything');
+			this.loadingAnimCompleted = true;
+		}
+		this.loadingAnimCompleted = this.loadingAnimCompleted || false;
+		if (elData.animatedLoading && !this.loadingAnimCompleted) {
+			d3.select(this.el).transition()
+		}
 
 	    /*
 	     * Convert palette string into array of colors
@@ -183,9 +195,11 @@ window.toc = function(ticStart){
 		OK now we can proceed to build the graph
 		*/
 
-		var NROWS = elData.NROWS;
+		var NROWS = elData.NROWS; // Source image dimensions
 		var NCOLS = elData.NCOLS;
-		var AFRAME_UNITS_PER_HEXCELL = Math.max( elData.width/NCOLS/Math.PI*2, elData.width/NROWS/Math.PI*2); //AFrame units per pixel
+
+		elData.height = elData.width / (NROWS/NCOLS);
+		var AFRAME_UNITS_PER_HEXCELL = Math.min( elData.width/NCOLS/Math.PI*2, elData.height/NROWS/Math.PI*2); //AFrame units per pixel
 		AFRAME_UNITS_PER_HEXCELL = AFRAME_UNITS_PER_HEXCELL/elData.hexDensity;
 		console.assert(elData.hexDensity<=1,'hexDensity cannot be >1');
 
@@ -212,9 +226,9 @@ window.toc = function(ticStart){
 		var ul = grid.qrs2xyz([-grid.size, 0, grid.size ]);
 		var lr = grid.qrs2xyz([grid.size, 0, -grid.size]);
 		G.Xrange = [ul[0], lr[0]];
-		G.Zrange = [ul[2], lr[2]];
-		G.scaleXWorldIntoData = d3.scaleLinear().domain([G.Xrange[0], G.Xrange[1]]).range([1, NCOLS]);
-		G.scaleZWorldIntoData = d3.scaleLinear().domain([G.Zrange[0], G.Zrange[1]]).range([1, NROWS]);
+		G.Zrange = [ul[2], lr[2] /(NCOLS/NROWS) /(NCOLS/NROWS)];
+		//G.scaleXWorldIntoData = d3.scaleLinear().domain([G.Xrange[0], G.Xrange[1]]).range([1, NCOLS]);
+		//G.scaleZWorldIntoData = d3.scaleLinear().domain([G.Zrange[0], G.Zrange[1]]).range([1, NROWS*(NROWS/NCOLS)]);
 		grid.renderOffsetX =0;
 		grid.renderOffsetZ =0;
 
@@ -237,11 +251,16 @@ window.toc = function(ticStart){
 
 		this.t_bin = window.tic();
 
+		// Create  small pool of randomness to make the binning more visually pleasing. 
+		// We use a small pool since lots of Math.random() adds ~0.5 seconds to the binning.
 		var randomPool = []; for (var i=0; i<100; i++) randomPool.push(Math.random()*0.001);
+
+		var maxDataVal = 0; for (var i=0; i<elData.rawData.length; i++) maxDataVal = Math.max(maxDataVal, elData.rawData[i]);
 
 		for (var rw=0; rw<NROWS; rw++){
 			for (var cl=0; cl<NCOLS; cl++){
 				val = elData.rawData instanceof Uint8Array ? elData.rawData[rw*NCOLS + cl] : elData.rawData[rw][cl];
+				if (elData.invertElevation) val = maxDataVal - val;
 				xoff=randomPool[rw*cl % randomPool.length]  ; // A bit of wiggle here helps prevent Moire patterns
 				yoff= randomPool[(rw*5)*cl % randomPool.length]  ;
 				idx = grid.xyz2idx([G.scaleDataColIntoWorld(cl+1)+xoff, 0, G.scaleDataRowIntoWorld(rw+1)+yoff]);
@@ -352,6 +371,8 @@ window.toc = function(ticStart){
 			's. (Load ' + this.t_load +'s, normalize ' + this.t_norm +', bin ' + this.t_bin + ', geometry '+this.t_geom +')');
 
 
+		this.el.dispatchEvent(new Event("updated"));
+		this.el.emit("updated", {}, false);
 	}, // end update() function
 
 
