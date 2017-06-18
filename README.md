@@ -24,6 +24,7 @@ totally indebted to [Amit's](http://www.redblobgames.com/grids/hexagons/) expana
 | src | Image or JSON file containing input data |  |
 | scaleArea | Scale tile sizes proportional to value? | false |
 | scaleHeight | Scale tile height proportional to their value? | true |
+| invertElevation | Normally we treat white=ground and black=peaks. Set this to True to flip that | false |
 | palette | A predefined palette or palette as JSON string | redblue |
 | flipPalette | Reverse the palette directions? | false |
 | width | Width of map, in AFRAME units. | 1 |
