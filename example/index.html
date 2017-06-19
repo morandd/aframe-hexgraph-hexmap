@@ -5,6 +5,8 @@
   <title>My A-Frame Scene</title>
   <script src="//aframe.io/releases/0.5.0/aframe.min.js"></script> 
 	<link href="https://fonts.googleapis.com/css?family=Raleway" rel="stylesheet">
+    <script src="https://cdn.rawgit.com/tizzle/aframe-orbit-controls-component/master/dist/aframe-orbit-controls-component.min.js"></script>
+
 <!--
     <script src="https://cdn.rawgit.com/tizzle/aframe-orbit-controls-component/master/dist/aframe-orbit-controls-component.min.js"></script>
 -->
@@ -89,8 +91,11 @@
 			}
 
 				document.getElementById('map').setAttribute('aframe-hexgraph-hexmap', {
-					src: '#png' + region,
-					palette: p});
+					src: '#png' + region});
+
+				//document.getElementById('basemap').setAttribute('src', region.toLowerCase() +'_820_pixelized_gridded.jpg');
+
+
 		} // handleClick()
 
 /*
@@ -128,6 +133,8 @@ controller.onChange(function(value) {
 
 	<a-sky color="#aaa"></a-sky>
 
+
+
 	<a-entity id="map" aframe-hexgraph-hexmap="
 		src:#pngEU;
 		width:5;
@@ -145,27 +152,14 @@ controller.onChange(function(value) {
 		wireframeColor:#000;
 		palette: viridis" scale="3 0.9 3" >
 	</a-entity>
-	<!--
-	<a-box scale="1 1 1" color="red" wireframe="true"></a-entity>
-	-->
 
 
 
-	<!--
-		  <a-animation attribute="scale"
-               dur="5000"
-               fill="forwards"
-               to="1 0.2 1"
-               repeat="indefinite"></a-animation>
 
-
-			  <a-animation attribute="scale"
-               dur="3000"
-               fill="forwards"
-               to="1 0 1"
-               repeat="indefinite"></a-animation>
-		
+<!--
+	<a-image id="basemap" src="eu_820_pixelized_gridded.jpg" width="5.5" height="3.5" scale="3 3 1" position="0 -0.1 -3" rotation="-90 0 0" material="opacity:0.8; transparent:true"></a-image>
 -->
+
 
 
 
@@ -174,16 +168,7 @@ controller.onChange(function(value) {
 	 <a-entity id="target" geometry="primitive: box" scale="0.1 0.1 0.1" material="color: #cc0000; wireframe:true; visible:false"></a-entity>
 
 
-<!--	<a-text position="-1 3.5 -3" color="#555" value="Heatmap, rendered on a hexagon grid" align="center"></a-text>
--->
-	<!--
-	
--->
-<!--	<a-entity light="type: ambient; color: #fCC"></a-entity>
-	<a-light color="white" position="-1 2 -3"></a-light>
-	<a-light color="white" position="0 6 -1"></a-light>
-	<a-light color="white" position="0 0.5 -1"></a-light>
-	-->
+
 
 
 
@@ -192,18 +177,29 @@ controller.onChange(function(value) {
             id="camera_orbit"
             position="0 3 6"
 			wasd-controls="fly:true" 
-			look-controls>
+			orbit-controls="
+                autoRotate: false;
+                target: #target;
+                enableDamping: true;
+                dampingFactor: 0.125;
+                rotateSpeed:0.15;
+				zoomSpeed:0.5;
+				minPolarAngle: 0.7;
+				maxPolarAngle:1.3;
+				maxAzimuthAngle:1.2;
+				minAzimuthAngle: -1.2;
+                minDistance:1;
+                maxDistance:10;"
+    			>
 		</a-entity>
 				
 
 	
+<!--
 		<a-entity light="type: ambient; color: #fff; intensity: 1.99"></a-entity>
 		<a-entity light="color:white; type: point; target:map; intensity:1.0; distance:0.2"  position="3 3 0"></a-entity>
 		<a-entity light="color:white;  type: point; target:map; intensity:1; distance:0.2"  position="-3 3 0"></a-entity>
 		<a-entity light="color:white;  type: point; target:map; intensity:1; distance:0.2"  position="- 3 0"></a-entity>
-<!--
-		<a-entity light="color:red;  type: point; target:map; intensity:9.7"  position="-10 1 0"></a-entity>
-		<a-entity light="color:red; type: point; target:target; intensity:3.7"  position="-35 50 10"></a-entity>
 
 			orbit-controls="
                 autoRotate: false;

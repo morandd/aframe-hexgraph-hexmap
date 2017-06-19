@@ -46,7 +46,8 @@ totally indebted to [Amit's](http://www.redblobgames.com/grids/hexagons/) expana
 | specular | Control material specular color | #111111
 | blending | THREE.js blending mode, as string | THREE.NormalBlending |
 | opacity | Opacity of the object (only takes effect if scaleOpacity is false, or using a custom material) | 0.75 |
-
+| loadingAnimDur | Loading animation duration (0 to disable) | 1400
+| unloadingAnimDur | Unloading animation duration (0 to disable) | 500
 
 
 
@@ -54,6 +55,8 @@ totally indebted to [Amit's](http://www.redblobgames.com/grids/hexagons/) expana
 There are a few built-in palettes:
   `greypurple`, `aquablues`, `reds`, `redblue`, `RdYlBu`, `grass`, `winter`, `greens`,  `autumn`, `hot`, `viridis`, `plasma`, `parula`, and `cool`.
 These are taken from [ColorBrewer](http://colorbrewer2.org). See `MATLAB_PALETTE.md` for example of converting MATLAB colormaps to JSON. You can also specify a palette as a JSON array, as shown in the example.
+
+See [aframe-hexgraph-hexmap example]((https://morandd.github.io/aframe-hexgraph-hexmap/example/) to see the palette options in action.
 
 
 ### Animating ###

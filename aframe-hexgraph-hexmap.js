@@ -149,18 +149,27 @@ struct PointLight {
 	float shadowRadius;
 	vec2 shadowMapSize;
 };
-
+#if NUM_POINT_LIGHTS>0
 uniform PointLight pointLights[NUM_POINT_LIGHTS];
+#endif
 uniform sampler2D paletteTexture;
 vec4 c;
 void main(void) {
 	c = texture2D(paletteTexture, vec2(vHeight, 0.0));
 	// Pretty basic lambertian lighting...
 	vec4 addedLights = vec4(0.0, 0.0, 0.0, 0.0);
+#if NUM_POINT_LIGHTS>0
 	for(int l = 0; l < NUM_POINT_LIGHTS; l++) {
 	  vec3 lightDirection = normalize(vecPos - pointLights[l].position);
 	  addedLights.rgb += clamp(dot(-lightDirection, vecNormal), 0.0, 1.0) * pointLights[l].color ;
 	}
+#else
+	// If there are zero point lights, we just create 2 point lights.
+	// Without these the hex pillars have no shading so they basically appear as bars, not 3d objects
+	addedLights.rgb += clamp(dot(-normalize(vecPos - (viewMatrix * vec4(1.0, 0.5, 0.3, 1.0)).xyz), vecNormal), 0.0, 1.0) * vec3(1.0, 1.0, 1.0);
+	addedLights.rgb += clamp(dot(-normalize(vecPos - (viewMatrix * vec4(-1.0, 0.5, 0.0, 1.0)).xyz), vecNormal), 0.0, 1.0) * vec3(1.0, 1.0, 1.0);
+#endif
+
 	c = mix(c, addedLights, 0.2);
 	c.w = vOpacity ;
 	gl_FragColor = c;
