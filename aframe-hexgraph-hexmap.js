@@ -21,17 +21,19 @@ window.toc = function(ticStart){
 		invertElevation: { type: "boolean", default: false},
 		wireframeOnly:   { type: "boolean", default:false},
 		wireframeOn:     { type: "boolean", default:false}, // If you set this, maybe you also want to provide a palette consisting of a single color
-		wireframeColor:  { type: "color", default:"#fff"},
+		wireframeColor:  { type: "color", default:"#888888"},
 		NODATA_VALUE:    { type: "number", default:-9999},
 		tileScale:       { type: "number", default: 0.7}, // How much of the hex cell to fill with a rendered tiles
 		showZerovalCells:{ type: "boolean", default: false}, // Render cells with zero value
 		hexDensity:      { type: "number", default:0.3},
 		hexDensityMobile:{ type: "number", default:0.1},
 
-		animatedLoading:     { type: "boolean", default: true},
+		loadingAnimDur:  { type: "number", default: 1400},
+		unloadingAnimDur:{ type: "number", default: 500},
 
 		palette:         { type: "string", default: 'redblue'},
 		flipPalette:     { type: "boolean", default: false},
+		scaleOpacity:    { type: "boolean", default: true},  // Scale the height of each hex tile according to its value?
 		scaleHeight:     { type: "boolean", default: true},  // Scale the height of each hex tile according to its value?
 		scaleArea:       { type: "boolean", default: true}, // Scale the area of each hex tile according to its value?
 
@@ -44,12 +46,17 @@ window.toc = function(ticStart){
 		roughness: 		 { type: 'number', default: 0.5},
 		blending: 	     { type: 'string', default: 'THREE.NormalBlending'},
 		specular:        { type: 'color', default: '#111111'}
+
 	},
 
 
 	init: function () {
 		if (AFRAME.utils.device.isMobile()) this.data.hexDensity = this.data.hexDensityMobile;
-		this.rawData=null;
+		this.data.rawData=null;
+		this.vscale = 1;
+		this.geo = null;
+		this.material = null;
+		this.el.components.scale.desiredY = this.el.components.scale.data.y;
 		console.time("aframe-hexgraph-hexmap init and load data");
 	},
 
@@ -57,6 +64,189 @@ window.toc = function(ticStart){
 	remove: function () {
 		return;
 	},
+
+
+	customVertexShader: '' +
+//		'     attribute float opacity;' + // Vertex opacity
+		'     attribute float height01;' + // Desired height of this vertex
+		//    '     varying vec4 vColor;' +
+		'     varying float vOpacity;' + // passed to the frag shader via the interpolator
+		'     varying float vHeight;' + // Passed to the frag shader via the interpolator
+		//    '     uniform sampler2D paletteTexture; ' +
+		'     uniform float vscale;' + // Scaling uniform used to drive animations
+		'     varying vec3 vViewPosition;' +
+		'     vec3 positionAdj; ' + 
+	' varying vec3 vNormal; varying vec3 vWorldNormal; varying vec3 vPos; varying vec3 vWorldPos;' +
+		'     void main() {' +
+		'       vHeight = height01 * vscale;' + 
+		'       vOpacity = log(height01+1.0)/log(2.0)*vscale ;' + 
+		'       positionAdj  = position; positionAdj.y = positionAdj.y * vscale; ' +
+	' vNormal= normalize(normalMatrix * normal);  vWorldNormal = normal; ' + 
+	' vPos = ( modelViewMatrix * vec4(position, 1.0)).xyz; vWorldPos=positionAdj;' +
+	'    vec4 vertPos4 = modelViewMatrix * vec4(positionAdj, 1.0); ' + 
+    ' vPos = vec3(vertPos4) / vertPos4.w; '+ 
+		'       gl_Position = projectionMatrix * modelViewMatrix * vec4( positionAdj, 1.0 );' +
+		'       vViewPosition = gl_Position.xyz;' +
+		'     }',
+
+v2: `
+varying vec3 vecPos;
+varying vec3 vecNormal;
+attribute float height01;
+uniform float my_opacity;
+uniform float scaleOpacity;
+uniform float vscale;
+varying float vOpacity;
+varying float vHeight;
+vec3 positionAdj;
+
+void main() {
+  vHeight = height01 * vscale;
+
+  if (scaleOpacity>0.0) {
+  	vOpacity = log(height01+1.0)/log(2.0)*vscale ;
+  } else {
+	vOpacity  = my_opacity * vscale;
+  }
+
+  // Adjust position based on vscale
+  positionAdj  = position; positionAdj.y = positionAdj.y * vscale; 
+
+  // Since the light is in camera coordinates,
+  // I'll need the vertex position in camera coords too
+  vecPos = (modelViewMatrix * vec4(positionAdj, 1.0)).xyz;
+
+  // That's NOT exacly how you should transform your
+  // normals but this will work fine, since my model
+  // matrix is pretty basic
+  vecNormal = (modelViewMatrix * vec4(normal, 0.0)).xyz;
+
+  gl_Position = projectionMatrix * vec4(vecPos, 1.0);
+}
+`,
+p2:
+`
+
+varying vec3 vecPos;
+varying vec3 vecNormal;
+varying float vOpacity;
+varying float vHeight;
+
+uniform float lightIntensity;
+uniform sampler2D textureSampler;
+
+struct PointLight {
+	vec3 position;
+	vec3 color;
+	float distance;
+	float decay;
+
+	int shadow;
+	float shadowBias;
+	float shadowRadius;
+	vec2 shadowMapSize;
+};
+
+uniform PointLight pointLights[NUM_POINT_LIGHTS];
+uniform sampler2D paletteTexture;
+vec4 c;
+void main(void) {
+	c = texture2D(paletteTexture, vec2(vHeight, 0.0));
+	// Pretty basic lambertian lighting...
+	vec4 addedLights = vec4(0.0, 0.0, 0.0, 0.0);
+	for(int l = 0; l < NUM_POINT_LIGHTS; l++) {
+	  vec3 lightDirection = normalize(vecPos - pointLights[l].position);
+	  addedLights.rgb += clamp(dot(-lightDirection, vecNormal), 0.0, 1.0) * pointLights[l].color ;
+	}
+	c = mix(c, addedLights, 0.2);
+	c.w = vOpacity ;
+	gl_FragColor = c;
+}
+`,
+
+	customFragShader: '' +
+		//'     varying vec4 vColor;' +
+		'     varying float vHeight;' +
+		'     varying float vOpacity;' +
+		'     uniform sampler2D paletteTexture; ' +
+		'     vec4 c;' +
+		'     void main() {' +
+		'       c = texture2D(paletteTexture, vec2(vHeight, 0.0));' +
+		'       c.w = vOpacity;' +
+		'       gl_FragColor = c;' +
+		'     }',
+
+		customFragShaderWithLights: `
+/* From: https://stackoverflow.com/questions/37342114/three-js-shadermaterial-lighting-not-working */
+			uniform vec3 diffuse;
+			varying vec3 vPos; // pixel in camera coordinates
+			varying vec3 vWorldPos;
+			varying vec3 vViewPosition;
+			varying vec3 vNormal;
+			varying vec3 vWorldNormal;
+			varying float vOpacity;
+			varying float vHeight;
+
+			const vec3 fixedLight1 = vec3(1.0, 0.5, 0.0);
+			const vec3 ambientColor = vec3(0.3, 0.0, 0.0);
+			const vec3 diffuseColor = vec3(0.5, 0.0, 0.0);
+			const vec3 specColor = vec3(1.0, 1.0, 1.0);
+
+
+
+		struct PointLight {
+		vec3 position;
+		vec3 color;
+		float distance;
+		float decay;
+
+		int shadow;
+		float shadowBias;
+		float shadowRadius;
+		vec2 shadowMapSize;
+	};
+			uniform PointLight pointLights[ NUM_POINT_LIGHTS ];
+
+
+			uniform sampler2D paletteTexture;
+
+			vec4 c;
+
+			void main() {
+				c = texture2D(paletteTexture, vec2(vHeight, 0.0));
+				c.w = vOpacity;
+
+				
+				vec4 addedLights = vec4(0.1, 0.1, 0.1, 1.0);
+				for(int l = 0; l < NUM_POINT_LIGHTS; l++) {
+					vec3 adjustedLight = pointLights[l].position + cameraPosition;
+					vec3 lightDirection = normalize(vPos - adjustedLight);
+					addedLights.rgb += clamp(dot(-lightDirection, vNormal), 0.0, 1.0) * pointLights[l].color;
+
+					//vec3 dir = normalize(/*vWorldPos.xyz -*/ pointLights[l].position - cameraPosition);
+					vec3 dir = normalize(vPos - pointLights[l].position + (viewMatrix * vec4(cameraPosition,1.0)).xyz);
+					//dir = normalize(fixedLight1 - vPos);
+					//dir = vec3(1.0,0.5,0);
+					addedLights.rgb += clamp(dot(-dir, normalize(-vPos)), 0.0, 1.0) * pointLights[l].color;
+					//addedLights = vec4(lightDirection,1.0);
+
+				}
+				
+				//vec3 dir = normalize(fixedLight1 - vPos);
+				//addedLights.rgb += clamp(dot(-dir, normalize(-vPos)), 0.0, 1.0) * pointLights[l].color;
+
+
+
+
+				gl_FragColor = addedLights; 
+				//mix(vec4(diffuse.x, diffuse.y, diffuse.z, 1.0), addedLights, addedLights);
+
+				addedLights += vec4(.0, .0, .0, 1.);
+				//gl_FragColor = c * addedLights * c;
+
+			}`,
+
+
 
 	update: function (oldData) {
 		var thisComponent = this;
@@ -68,15 +258,7 @@ window.toc = function(ticStart){
 
 		//if (Object.keys(diff).length===0) return;
 
-		/*
-		 * In case just opacity is being animated:
-		 */
-		if ("opacity" in diff) {
-			if (this.el.getObject3D("mesh")) {
-				this.el.getObject3D("mesh").material.opacity = this.data.opacity;
-				if (Object.keys(diff).length==1) return;
-			}
-		}
+
 
 
         this.t_load = window.tic();
@@ -136,26 +318,60 @@ window.toc = function(ticStart){
 
 
 
-		// We bail out of the update() function here if we haven"t loaded the JSON data yet
-		if (!elData.rawData) { 
-			// console.log("Should be retreiving json now");
-			return;
+
+		var updateGeometry = elData.rawData;
+		var updateMaterial = false;
+
+		if (!this.geo) updateGeometry = true;
+		if (!this.material) updateMaterial = true;
+		if ("opacity" in diff) updateMaterial = true;
+		if ("palette" in diff) updateMaterial = true;
+		// TODO add all the other attribures that can trigger a material refresh
+		
+
+		if (updateGeometry) {
+
+			/*
+			 * Here we can do unloading animation (if there is an existing geometry to unload)
+			 */
+			if (elData.unloadingAnimDur>0 && !d3 ) {
+				elData.unloadingAnimDur = 0;
+				console.log('aframe-hexgraph-hexmap: skiping unloading animation since d3 is not available');
+				elData.unloadingAnimCompleted = true;
+			}
+			elData.unloadingAnimCompleted = elData.unloadingAnimCompleted || false;
+			if (elData.unloadingAnimDur===0) elData.unloadingAnimCompleted = true; // If no animation was requested, we're already done :)
+			if (!this.el.getObject3D('mesh')) elData.unloadingAnimCompleted = true; // If we have no geometry (first time we get loaded), we're already done
+			if (!elData.unloadingAnimCompleted) {
+				//Then play the flatten animation
+				d3.select(this.el).transition().duration(elData.unloadingAnimDur*2.5).tween('vscale',function(){return function(t){
+			          this.vscale = t;
+			          if (this.material.uniforms) this.material.uniforms.vscale.value = (1-t);
+					//this.components.scale.data.y = this.components.scale.desiredY * (1-t);
+					//this.components['aframe-hexgraph-hexmap'].material.opacity= this.components['aframe-hexgraph-hexmap'].data.opacity * (1-t);
+					//this.components.scale.update();
+					return "";
+				}.bind(thisComponent)}).on("end", function(a,b,c){
+
+					// Call back to update() after flattening animation has completed
+					this.data.unloadingAnimCompleted=true; this.update(elData);
+				}.bind(thisComponent));
+				return;
+			} // Set up loading animation?
 		}
 
-		if (this.animatedLoading && !d3 ) {
-			console.log('aframe-hexgraph-hexmap: d3 must be loaded for animatedLoaded:true to do anything');
-			this.loadingAnimCompleted = true;
-		}
-		this.loadingAnimCompleted = this.loadingAnimCompleted || false;
-		if (elData.animatedLoading && !this.loadingAnimCompleted) {
-			d3.select(this.el).transition()
-		}
+
+		this.t_total = window.tic();
+		this.t_geom = "0.0";
+		this.t_norm = "0.0";
+		this.t_bin = "0.0";
 
 	    /*
 	     * Convert palette string into array of colors
 	     * We put built-in palettes here too.
 	     */
-	    if ("palette" in diff || !Array.isArray(this.palette)) {
+	    if ("palette" in diff || !Array.isArray(this.palette) ) {
+	    	data.palette = data.palette.toLowerCase();
 	      if ("greypurple" === data.palette) {
 	        this.palette=['#f7fcfd','#e0ecf4','#bfd3e6','#9ebcda','#8c96c6','#8c6bb1','#88419d','#6e016b'];
 	      } else if ("aquablues" === data.palette) {
@@ -187,6 +403,10 @@ window.toc = function(ticStart){
 	      } else {
 	        this.palette  = JSON.parse(data.palette.replace(/'/g ,'"'));
 	      }
+
+	      // Create a 1xN texture based on this palette
+	      this.paletteTexture = palette2texture(this.palette);
+
 	    }
 
 
@@ -194,187 +414,251 @@ window.toc = function(ticStart){
 		/*
 		OK now we can proceed to build the graph
 		*/
+		if (updateGeometry) {
+			var NROWS = elData.NROWS; // Source image dimensions
+			var NCOLS = elData.NCOLS;
 
-		var NROWS = elData.NROWS; // Source image dimensions
-		var NCOLS = elData.NCOLS;
-
-		elData.height = elData.width / (NROWS/NCOLS);
-		var AFRAME_UNITS_PER_HEXCELL = Math.min( elData.width/NCOLS/Math.PI*2, elData.height/NROWS/Math.PI*2); //AFrame units per pixel
-		AFRAME_UNITS_PER_HEXCELL = AFRAME_UNITS_PER_HEXCELL/elData.hexDensity;
-		console.assert(elData.hexDensity<=1,'hexDensity cannot be >1');
-
-
-
-
-		/*
-		 * Build the base hex grid: Genereate a grid with just slightly fewer cells than our data
-		 */
-		var grid = new vg.HexGrid({
-			cellSize: AFRAME_UNITS_PER_HEXCELL, // size of individual cells
-			extrudeSettings: {bevelEnabled:false}
-		});
-		grid.generateCellsAsArray({
-			size: Math.ceil(Math.max(NROWS,NCOLS)*elData.hexDensity) // Edge size is (size+1), since size is radius+1 center cell
-		});
-
-
-
-		/*
-		 * Set ups scaling helpers so we can project our data image/matrix into the hexagon-shaped board grid. 
-		 */
-		var G = {};
-		var ul = grid.qrs2xyz([-grid.size, 0, grid.size ]);
-		var lr = grid.qrs2xyz([grid.size, 0, -grid.size]);
-		G.Xrange = [ul[0], lr[0]];
-		G.Zrange = [ul[2], lr[2] /(NCOLS/NROWS) /(NCOLS/NROWS)];
-		//G.scaleXWorldIntoData = d3.scaleLinear().domain([G.Xrange[0], G.Xrange[1]]).range([1, NCOLS]);
-		//G.scaleZWorldIntoData = d3.scaleLinear().domain([G.Zrange[0], G.Zrange[1]]).range([1, NROWS*(NROWS/NCOLS)]);
-		grid.renderOffsetX =0;
-		grid.renderOffsetZ =0;
-
-		G.scaleDataRowIntoWorld = d3.scaleLinear()
-			.domain([1, NROWS])
-			.range(G.Zrange);
-		G.Xrange = [G.Xrange[0]*1/(vg.SQRT3), G.Xrange[1]*1/(vg.SQRT3) ];
-		G.scaleDataColIntoWorld = d3.scaleLinear().domain([1,NCOLS]).range(G.Xrange);
-		G.scaleColor = d3.scaleQuantize().domain([0, 1]).range(this.palette);
+			elData.height = elData.width / (NROWS/NCOLS);
+			var AFRAME_UNITS_PER_HEXCELL = Math.min( elData.width/NCOLS/Math.PI*2, elData.height/NROWS/Math.PI*2); //AFrame units per pixel
+			AFRAME_UNITS_PER_HEXCELL = AFRAME_UNITS_PER_HEXCELL/elData.hexDensity;
+			console.assert(elData.hexDensity<=1,'hexDensity cannot be >1');
 
 
 
 
-		/*
-		* Binning: Allocate data values into hex grid cells
-		*/
-		var val,cell;
-		var maxBin=0;
-		var xoff,yoff,qrs, idx;
-
-		this.t_bin = window.tic();
-
-		// Create  small pool of randomness to make the binning more visually pleasing. 
-		// We use a small pool since lots of Math.random() adds ~0.5 seconds to the binning.
-		var randomPool = []; for (var i=0; i<100; i++) randomPool.push(Math.random()*0.001);
-
-		var maxDataVal = 0; for (var i=0; i<elData.rawData.length; i++) maxDataVal = Math.max(maxDataVal, elData.rawData[i]);
-
-		for (var rw=0; rw<NROWS; rw++){
-			for (var cl=0; cl<NCOLS; cl++){
-				val = elData.rawData instanceof Uint8Array ? elData.rawData[rw*NCOLS + cl] : elData.rawData[rw][cl];
-				if (elData.invertElevation) val = maxDataVal - val;
-				xoff=randomPool[rw*cl % randomPool.length]  ; // A bit of wiggle here helps prevent Moire patterns
-				yoff= randomPool[(rw*5)*cl % randomPool.length]  ;
-				idx = grid.xyz2idx([G.scaleDataColIntoWorld(cl+1)+xoff, 0, G.scaleDataRowIntoWorld(rw+1)+yoff]);
-				if (idx===null) continue;
-				if (grid.cellValsAsArray[idx]==grid.NODATA) {
-					grid.cellValsAsArray[idx] = val;
-					grid.cellHeightsAsArray[idx] = val;
-					grid.cellAreasAsArray[idx] = val;
-				} else {
-					grid.cellValsAsArray[idx] += val;
-					grid.cellHeightsAsArray[idx] += val;
-					grid.cellAreasAsArray[idx] += val;
-				}
-				maxBin = Math.max(maxBin, grid.cellValsAsArray[idx]);
-			} //foreach data column
-		} // foreach data row
-
-		this.t_bin = window.toc(this.t_bin);
+			/*
+			 * Build the base hex grid: Genereate a grid with just slightly fewer cells than our data
+			 */
+			var grid = new vg.HexGrid({
+				cellSize: AFRAME_UNITS_PER_HEXCELL, // size of individual cells
+				extrudeSettings: {bevelEnabled:false}
+			});
+			grid.generateCellsAsArray({
+				size: Math.ceil(Math.max(NROWS,NCOLS)*elData.hexDensity) // Edge size is (size+1), since size is radius+1 center cell
+			});
 
 
 
-		/*
-		 * Normalize cell values to [0-1] range
-		 */
-		this.t_norm = window.tic();
-		var c;
-		for (idx=0; idx<grid.numCells; idx++) {
-			if (grid.cellValsAsArray[idx]===grid.NODATA) continue;
-			grid.cellValsAsArray[idx] =  grid.cellValsAsArray[idx]/maxBin;
+			/*
+			 * Set ups scaling helpers so we can project our data image/matrix into the hexagon-shaped board grid. 
+			 */
+			var G = {};
+			var ul = grid.qrs2xyz([-grid.size, 0, grid.size ]);
+			var lr = grid.qrs2xyz([grid.size, 0, -grid.size]);
+			G.Xrange = [ul[0], lr[0]];
+			G.Zrange = [ul[2], lr[2] /(NCOLS/NROWS) /(NCOLS/NROWS)];
+			//G.scaleXWorldIntoData = d3.scaleLinear().domain([G.Xrange[0], G.Xrange[1]]).range([1, NCOLS]);
+			//G.scaleZWorldIntoData = d3.scaleLinear().domain([G.Zrange[0], G.Zrange[1]]).range([1, NROWS*(NROWS/NCOLS)]);
+			grid.renderOffsetX =0;
+			grid.renderOffsetZ =0;
 
-			grid.cellColorsAsArray[idx] = elData.palette.length==1 ? elData.palette[0] : G.scaleColor(data.flipPalette ? (1-grid.cellValsAsArray[idx]) : grid.cellValsAsArray[idx]);
-			grid.cellHeightsAsArray[idx] = grid.cellValsAsArray[idx] || 0;
-			grid.cellAreasAsArray[idx] = Math.min(0.5, Math.max(0.3, (Math.log(grid.cellValsAsArray[idx])+1)/Math.log(1.8)));
-		}
-		this.t_norm = window.toc(this.t_norm);
+			G.scaleDataRowIntoWorld = d3.scaleLinear()
+				.domain([1, NROWS])
+				.range(G.Zrange);
+			G.Xrange = [G.Xrange[0]*1/(vg.SQRT3), G.Xrange[1]*1/(vg.SQRT3) ];
+			G.scaleDataColIntoWorld = d3.scaleLinear().domain([1,NCOLS]).range(G.Xrange);
+			G.scaleColor = d3.scaleQuantize().domain([0, 1]).range(this.palette);
 
 
 
-		/*
-		 * Generate THREE.BufferGeometry mesh based on the cell values
-		*/
-		this.t_geom = window.tic();
-		var geo = grid.generateTilesBufGeom({
-			tileScale: elData.tileScale,
-			scaleHeight: elData.scaleHeight,
-			scaleArea: elData.scaleArea,
-			scaleColor:  elData.palette.length>1,
-			showZerovalCells:elData.showZerovalCells
-		});
-		this.t_geom = window.toc(this.t_geom);
 
+			/*
+			* Binning: Allocate data values into hex grid cells
+			*/
+			this.t_bin = window.tic();
+
+			var val,cell;
+			var maxBin=0;
+			var xoff,yoff,qrs, idx;
+
+
+			// Create  small pool of randomness to make the binning more visually pleasing. 
+			// We use a small pool since lots of Math.random() adds ~0.5 seconds to the binning.
+			var randomPool = []; for (var i=0; i<100; i++) randomPool.push(Math.random()*0.001);
+
+			//var maxDataVal = 0; for (var i=0; i<elData.rawData.length; i++) maxDataVal = Math.max(maxDataVal, elData.rawData[i]);
+			var rawdataIsVector = isFinite(elData.rawData[0]);// slower: elData.rawData instanceof Uint8Array;
+			for (var rw=0; rw<NROWS; rw++){
+				var tmp_ri = rw*NCOLS;
+				for (var cl=0; cl<NCOLS; cl++){
+					//val = rawdataIsVector ? elData.rawData[rw*NCOLS + cl] : elData.rawData[rw][cl];
+					val = elData.rawData[tmp_ri + cl];// : elData.rawData[rw][cl];
+					if (elData.invertElevation) val = 255 - val;
+					xoff= randomPool[rw*cl % randomPool.length]  ; // A bit of wiggle here helps prevent Moire patterns
+					yoff= randomPool[(rw*5)*cl % randomPool.length]  ;
+					idx = grid.xyz2idx([G.scaleDataColIntoWorld(cl+1)+xoff, 0, G.scaleDataRowIntoWorld(rw+1)+yoff]);
+					//if (idx===null)  continue; // should never happen...
+					if (grid.cellValsAsArray[idx]===grid.NODATA) {
+						grid.cellValsAsArray[idx] = val;
+						grid.cellHeightsAsArray[idx] = val;
+						grid.cellAreasAsArray[idx] = val;
+					} else {
+						grid.cellValsAsArray[idx] += val;
+						grid.cellHeightsAsArray[idx] += val;
+						grid.cellAreasAsArray[idx] += val;
+					}
+					maxBin = Math.max(maxBin, grid.cellValsAsArray[idx]);
+				} //foreach data column
+			} // foreach data row
+
+			//for (var rw=0; rw<grid.cellValsAsArray.length; rw++) maxBin = Math.max(maxBin, grid.cellValsAsArray[rw]);
+
+			this.t_bin = window.toc(this.t_bin);
+
+
+
+			/*
+			 * Normalize cell values to [0-1] range
+			 */
+			this.t_norm = window.tic();
+			var c;
+			for (idx=0; idx<grid.numCells; idx++) {
+				if (grid.cellValsAsArray[idx]===grid.NODATA) continue;
+				grid.cellValsAsArray[idx] =  grid.cellValsAsArray[idx]/maxBin;
+
+				//if (elData.invertElevation) grid.cellValsAsArray[idx] = 1 - grid.cellValsAsArray[idx];
+
+				grid.cellColorsAsArray[idx] = elData.palette.length==1 ? elData.palette[0] : G.scaleColor(data.flipPalette ? (1-grid.cellValsAsArray[idx]) : grid.cellValsAsArray[idx]);
+				grid.cellHeightsAsArray[idx] = grid.cellValsAsArray[idx] || 0;
+				grid.cellAreasAsArray[idx] = Math.min(0.5, Math.max(0.3, (Math.log(grid.cellValsAsArray[idx])+1)/Math.log(1.8)));
+			}
+			this.t_norm = window.toc(this.t_norm);
+
+
+
+			/*
+			 * Generate THREE.BufferGeometry mesh based on the cell values
+			*/
+			this.t_geom = window.tic();
+			this.geo = grid.generateTilesBufGeom({
+				tileScale: elData.tileScale,
+				scaleHeight: elData.scaleHeight,
+				scaleArea: elData.scaleArea,
+				scaleColor:  elData.palette.length>1,
+				showZerovalCells:elData.showZerovalCells
+			});
+			this.t_geom = window.toc(this.t_geom);
+
+		} // update geometry?
 
 
 		/*
 		 * Set up material
 		 */
-		var material;
-		var meshBaseColor = elData.palette.length==1 ? new THREE.Color(elData.palette[0]) : 0xffffff;
-		var meshVertexColoring = elData.palette.length==1 ?  THREE.NoColors : THREE.VertexColors;
 
-		//material =new THREE.MeshLambertMaterial({color:0xffffff, emissive: 0xffffff, emissiveIntensity: 0.1, wireframe: false, vertexColors:THREE.VertexColors  });
-		//material =new THREE.MeshPhongMaterial({color:0xffffff, emissive: 0xffffff, emissiveIntensity: 0.1,shininess: 30,  wireframe: false, vertexColors:THREE.VertexColors  });
-		//material =new THREE.MeshStandardMaterial({color:0xffffff, emissive: 0xffffff, emissiveIntensity: 0.1, metalness:0, roughness:0, wireframe: false, vertexColors:THREE.VertexColors  });
-		material =new THREE.MeshStandardMaterial({color:0xffffff, emissive: 0xffffff, emissiveIntensity: 0.1, transparent:true, opacity:elData.opacity, metalness:0, roughness:0, wireframe: false, vertexColors:THREE.VertexColors  });
+		 if ( updateMaterial ) {
+			
+			this.material =new THREE.MeshStandardMaterial({
+				color:0xffffff,
+				emissive: elData.emissive,
+				emissiveIntensity:  elData.emissiveIntensity,
+				wireframe: false,
+				opacity: elData.opacity,
+				shading: elData.shading=="flat" ? THREE.FlatShading : THREE.SmoothShading,
+				metalness: elData.metalness,
+				roughness: elData.roughness,
+				blending: eval(elData.blending),
+				transparent: elData.opacity!=1 || (elData.loadingAnimDur>0 || elData.unloadingAnimDur>0),
+				vertexColors:THREE.VertexColors
+			});
+			
+			this.paletteTexture.needsUpdate = true;
+			this.material = new THREE.ShaderMaterial({
+				uniforms: THREE.UniformsUtils.merge([
+					THREE.UniformsLib['lights'],
+					{
+						vscale:         { type: 'f', value: this.vscale },
+						my_opacity:     { type: 'f', value: elData.opacity },
+						scaleOpacity:   { type: 'f', value: elData.scaleOpacity?1.0:0.0 },
+						paletteTexture: { type: 't', value: this.paletteTexture },
+						diffuse: 		{ type: 'c', value: new THREE.Color(0xffffff) }
+					}
+				]),
+				vertexShader:   this.v2,//this.customVertexShader,
+				fragmentShader: this.p2,//this.customFragShaderWithLights,
+				depthTest:      true,
+				transparent:    true,
+				lights:true,
+				//shading:        THREE.FlatShading,
+				vertexColors:   THREE.VertexColors
+				//blending: THREE.MultiplyBlending
+			});
+			this.material.uniforms.paletteTexture.value.needsUpdate = true;
 
-		material =new THREE.MeshStandardMaterial({
-			color:0xffffff,
-			emissive: elData.emissive,
-			emissiveIntensity:  elData.emissiveIntensity,
-			wireframe: false,
-			opacity: elData.opacity,
-			shading: elData.shading=="flat" ? THREE.FlatShading : THREE.SmoothShading,
-			metalness: elData.metalness,
-			//shininess: elData.shininess,
-			roughness: elData.roughness,
-			blending: eval(elData.blending),
-			transparent: elData.opacity!=1,
-			//specular: elData.specular,
-			vertexColors:THREE.VertexColors
-		});
 
+			var meshVertexColoring = elData.palette.length==1 ?  THREE.NoColors : THREE.VertexColors;
+			this.materialWireframe = new THREE.MeshBasicMaterial({color:elData.wireframeColor, opacity:0.5, wireframe:true, vertexColors:meshVertexColoring});
 
-		var materialWireframe = new THREE.MeshBasicMaterial({color:elData.wireframeColor, wireframe:true, vertexColors:meshVertexColoring});
-
-
+		} // update material? 
 		//material = new THREE.MeshNormalMaterial({vertexColors:THREE.VertexColors});
 
 
 		/*
 		 ***** Add the Object3d to the scene *******
 		 */
-		if (elData.wireframeOnly) {
-			var meshEl = document.createElement('a-entity');
-			meshEl.setObject3D("mesh", new THREE.Mesh(geo, materialWireframe));
-			el.appendChild(meshEl);
-		} else {
-
-			this.el.setObject3D("mesh", new THREE.Mesh(geo, elData.wireframe ? materialWireframe : material));
-
-			if (elData.wireframeOn) {
+		if (updateGeometry || updateMaterial) {
+			if (elData.wireframeOnly) {
 				var meshEl = document.createElement('a-entity');
-				meshEl.setObject3D("mesh", new THREE.Mesh(geo, materialWireframe));
+				meshEl.setObject3D("mesh", new THREE.Mesh(this.geo, this.materialWireframe));
 				el.appendChild(meshEl);
+			} else {
+
+				this.el.setObject3D("mesh", new THREE.Mesh(this.geo, elData.wireframe ? this.materialWireframe : this.material));
+
+				if (elData.wireframeOn) {
+					var meshEl = document.createElement('a-entity');
+					meshEl.setObject3D("mesh", new THREE.Mesh(this.geo, this.materialWireframe));
+					el.appendChild(meshEl);
+				}
 			}
 		}
 
-		console.log('aframe-hexgraph: Done in ' + (this.t_load*1+this.t_norm*1+this.t_bin*1+this.t_geom*1) + 
+		this.t_total = window.toc(this.t_total);
+
+		console.log('aframe-hexgraph: Done in ' + this.t_total + 
 			's. (Load ' + this.t_load +'s, normalize ' + this.t_norm +', bin ' + this.t_bin + ', geometry '+this.t_geom +')');
 
 
-		this.el.dispatchEvent(new Event("updated"));
-		this.el.emit("updated", {}, false);
+		/*
+		 * Now that we've built the geometry, we can do the flashy vertical scaling animation
+		 */
+		 if (updateGeometry) {
+			if (elData.loadingAnimDur>0 && !d3 ) {
+				elData.loadingAnimDur = 0;
+				console.log('aframe-hexgraph-hexmap: skiping loading animation since d3 is not available');
+				elData.loadingAnimCompleted = true;
+			}
+			elData.loadingAnimCompleted = elData.loadingAnimCompleted || false;
+			if (elData.loadingAnimDur===0) elData.loadingAnimCompleted = true; // If no animation was requested, we're already done :)
+			if (!elData.loadingAnimCompleted) {
+				// Set us to zero height
+				//this.material.opacity = 0;
+				//this.el.components.scale.data.y = 0.01;
+				//this.el.components.scale.update();
+				//Then play the grow animation
+				d3.select(this.el).transition().duration(elData.loadingAnimDur*2.5).tween('vscale',function(){return function(t){
+			          this.vscale = t;
+			          if (this.material.uniforms) this.material.uniforms.vscale.value = t;
+					//this.components.scale.data.y = this.components.scale.desiredY * t;
+					//this.components.scale.update();	
+					//this.components['aframe-hexgraph-hexmap'].material.opacity= this.components['aframe-hexgraph-hexmap'].data.opacity * t;
+					return "";
+				}.bind(thisComponent)});/*.on("end", function(a,b,c){
+
+					// Call back 
+					this.components['aframe-hexgraph-hexmap'].data.loadingAnimCompleted=true; this.components['aframe-hexgraph-hexmap'].update(elData)
+				});*/
+			} // Set up loading animation?
+
+		} // Only do loading anim if geometry got updated
+
+		//this.el.dispatchEvent(new Event("updated"));
+		//this.el.emit("updated", {}, false);
 	}, // end update() function
 
+	tic: function (a){
+		console.log(a);
+	}
 
 });
 
@@ -384,27 +668,37 @@ window.toc = function(ticStart){
 
 
 
-	/*
-	Alternative materials. Not used since they look a bit strange
-	*
-	var materialn = new THREE.MeshLambertMaterial( {
-		color: 0xffffff,
-		shading: elData.shading=="flat" ? THREE.FlatShading : THREE.SmoothShading,
-		vertexColors: THREE.VertexColors,
-		transparent: elData.opacity!=1,
-		opacity:elData.opacity
-	});
-	// Looks cartoon-ey
-	var materialNo = new THREE.MeshPhongMaterial( {
-		color: 0xffffff,
-		shading: elData.shading=="flat" ? THREE.FlatShading : THREE.SmoothShading,
-		vertexColors: THREE.VertexColors,
-		shininess:30,
-		specular: 0xffffff,
-		transparent: elData.opacity!=1,
-		opacity:elData.opacity
-	});
-	*/
+function palette2texture(palette){
+
+  // Create canvas
+  var paletteCanvas = document.createElement('canvas');
+  paletteCanvas.id = "paletteCanvas" + Math.random();
+  paletteCanvas.width = palette.length; paletteCanvas.height=1;
+  var ctx = paletteCanvas.getContext('2d');
+
+  // Set up internal function to convert color strings like '#aabbcc' to [200, 100, 255] RGB tuples
+  function hexToRgb(hex) {
+      if (hex[0]=="#") hex = hex.slice(1); // Chomp leading #
+      var bigint = parseInt(hex, 16);
+      var r = (bigint >> 16) & 255;
+      var g = (bigint >> 8) & 255;
+      var b = bigint & 255;
+      return [r,g,b];
+  }
+
+  // Create ImageData object and populate its .data array
+  var id = ctx.createImageData(paletteCanvas.width,1);
+  for (var i=0, j=0; i<paletteCanvas.width; i++){
+    var a = hexToRgb(palette[i]);
+    id.data[j++] = a[0]; // r
+    id.data[j++] = a[1]; // g 
+    id.data[j++] = a[2]; // b
+    id.data[j++] = 255; // alpha is always 255 
+  }
+  ctx.putImageData( id, 0,0); 
+  return new THREE.Texture(paletteCanvas);
+
+}
 
 
 
@@ -496,6 +790,8 @@ vg.HexGrid.prototype.generateTilesBufGeom  = function(config) {
 	}
 	templateGeometry.rotateX(-90 * (Math.PI/180));
 
+	//templateGeometry.computeVertexNormals();
+
 
 	var geo       = new THREE.BufferGeometry();
 	var NCELLS    = 0; // Number of cells that we actually have to render is less than this.
@@ -513,6 +809,7 @@ vg.HexGrid.prototype.generateTilesBufGeom  = function(config) {
 	var NVERTS    = NCELLS * templateGeometry.faces.length * 3;
 	var vertices  = new Float32Array( NVERTS * 3 );
 	var normals   = new Float32Array( NVERTS * 3 );
+	var height01  = new Float32Array( NVERTS  );
 	var vcolors = null;
 	if (settings.scaleColor) { vcolors   = new Float32Array( NVERTS * 3 ); }
 
@@ -520,12 +817,13 @@ vg.HexGrid.prototype.generateTilesBufGeom  = function(config) {
 	/*
 	 * Now we actually manipulate the BufferGeometry: adjust the vertex Z coordinates and vertex colors.
 	 */
-	var vi=0, vci=0, uvi=0,f, val, vert, pos,clr, sh, sa;
+	var vi=0, vci=0, vhi=0, uvi=0,f, val, vert, pos,clr, sh, sa;
 	var vA, vB, vC;
 	var cellValIdx=0; // index into 
 	var thisHexGrid = this;
 
-	for (var ci=0; ci<this.cellValsAsArray.length; ci++){
+	//for (var ci=0; ci<this.cellValsAsArray.length; ci++){
+	for (var ci=this.cellValsAsArray.length-1; ci>0; ci--){
 
 		val = this.cellValsAsArray[ci];
 
@@ -537,7 +835,7 @@ vg.HexGrid.prototype.generateTilesBufGeom  = function(config) {
 			clr = (clr instanceof THREE.Color) ? clr : new THREE.Color(clr);
 		}
 		sa = settings.scaleArea ? (this.cellAreasAsArray[ci] || 0) : 1;
-		sh = settings.scaleHeight ? Math.max(0.1, this.cellHeightsAsArray[ci]) : 1;
+		sh = settings.scaleHeight ? Math.max(0.001, this.cellHeightsAsArray[ci]) : 1;
 
 		pos = this.idx2xyz(ci);
 		var hexCellX = pos[0] + this.renderOffsetX || 0; 
@@ -549,6 +847,10 @@ vg.HexGrid.prototype.generateTilesBufGeom  = function(config) {
 		var cb = new THREE.Vector3();
 		var ab = new THREE.Vector3();
 
+		for (var k=0; k<templateGeometry.faces.length*3; k++) height01[vhi++] = this.cellHeightsAsArray[ci];
+
+
+		// Foreach face in this 3d hexagon cell:
 		for (f=0; f<templateGeometry.faces.length; f++) {
 
 			var faceNormal = templateGeometry.faces[f].normal;
@@ -556,17 +858,18 @@ vg.HexGrid.prototype.generateTilesBufGeom  = function(config) {
 			// Vertices are X,Y,Z sequence, so by putting faces.y into vertex Z we do the rotation so that Z axis faces the sky instead of the camera
 
 			var ax = templateGeometry.vertices[templateGeometry.faces[f].a].x*sa + hexCellX;
-			var ay = Math.max(1e-6, templateGeometry.vertices[templateGeometry.faces[f].a].y*sh);
+			var ay = Math.max(0, templateGeometry.vertices[templateGeometry.faces[f].a].y*sh);
 			var az = templateGeometry.vertices[templateGeometry.faces[f].a].z*sa + hexCellY;
 
 			var bx = templateGeometry.vertices[templateGeometry.faces[f].b].x*sa + hexCellX;
-			var by = Math.max(1e-6, templateGeometry.vertices[templateGeometry.faces[f].b].y*sh);
+			var by = Math.max(0, templateGeometry.vertices[templateGeometry.faces[f].b].y*sh);
 			var bz = templateGeometry.vertices[templateGeometry.faces[f].b].z*sa + hexCellY;
 
 			var cx = templateGeometry.vertices[templateGeometry.faces[f].c].x*sa + hexCellX;
-			var cy = Math.max(1e-6, templateGeometry.vertices[templateGeometry.faces[f].c].y*sh);
+			var cy = Math.max(0, templateGeometry.vertices[templateGeometry.faces[f].c].y*sh);
 			var cz = templateGeometry.vertices[templateGeometry.faces[f].c].z*sa + hexCellY;
 
+			//for (var k=0; k<9; k++) height01[vi+k] = this.cellHeightsAsArray[ci];
 			
 
 			pA.set( ax, ay, az );
@@ -584,6 +887,22 @@ vg.HexGrid.prototype.generateTilesBufGeom  = function(config) {
 			var nz = cb.z;
 
 
+			/*
+			// Smooth shading, as calculated by 		templateGeometry.computeVertexNormals();
+			normals[vi+0] = templateGeometry.faces[f].vertexNormals[0].x;
+			normals[vi+1] = templateGeometry.faces[f].vertexNormals[0].y;
+			normals[vi+2] = templateGeometry.faces[f].vertexNormals[0].x;
+
+			normals[vi+3] = templateGeometry.faces[f].vertexNormals[1].x;
+			normals[vi+4] = templateGeometry.faces[f].vertexNormals[1].y;
+			normals[vi+5] = templateGeometry.faces[f].vertexNormals[1].x;
+
+			normals[vi+6] = templateGeometry.faces[f].vertexNormals[2].x;
+			normals[vi+7] = templateGeometry.faces[f].vertexNormals[2].y;
+			normals[vi+8] = templateGeometry.faces[f].vertexNormals[2].x;
+			*/
+			 
+			// FLAT SHADING
 			normals[vi+0] = nx;
 			normals[vi+1] = ny;
 			normals[vi+2] = nz;
@@ -595,7 +914,7 @@ vg.HexGrid.prototype.generateTilesBufGeom  = function(config) {
 			normals[vi+6] = nx;
 			normals[vi+7] = ny;
 			normals[vi+8] = nz;
-
+			
 			vertices[vi++] = ax;
 			vertices[vi++] = ay;
 			vertices[vi++] = az;
@@ -630,6 +949,7 @@ vg.HexGrid.prototype.generateTilesBufGeom  = function(config) {
 	 */
 	geo.addAttribute( 'normal', new THREE.BufferAttribute( normals, 3 ) );
 	geo.addAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+	geo.addAttribute( 'height01', new THREE.BufferAttribute( height01, 1 ) );
 	if (vcolors) geo.addAttribute( 'color', new THREE.BufferAttribute( vcolors, 3 ) );
 
 

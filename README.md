@@ -24,6 +24,7 @@ totally indebted to [Amit's](http://www.redblobgames.com/grids/hexagons/) expana
 | src | Image or JSON file containing input data |  |
 | scaleArea | Scale tile sizes proportional to value? | false |
 | scaleHeight | Scale tile height proportional to their value? | true |
+| scaleOpacity | Scale tile opacity proportional to their value? | true |
 | invertElevation | Normally we treat white=ground and black=peaks. Set this to True to flip that | false |
 | palette | A predefined palette or palette as JSON string | redblue |
 | flipPalette | Reverse the palette directions? | false |
@@ -44,7 +45,7 @@ totally indebted to [Amit's](http://www.redblobgames.com/grids/hexagons/) expana
 | shininess | Control material shininess | 30 |
 | specular | Control material specular color | #111111
 | blending | THREE.js blending mode, as string | THREE.NormalBlending |
-| opacity | Opacity of the object. | 0.75 |
+| opacity | Opacity of the object (only takes effect if scaleOpacity is false, or using a custom material) | 0.75 |
 
 
 
