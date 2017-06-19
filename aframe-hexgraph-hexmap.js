@@ -52,7 +52,7 @@ window.toc = function(ticStart){
 
 	init: function () {
 		if (AFRAME.utils.device.isMobile()) this.data.hexDensity = this.data.hexDensityMobile;
-		this.data.rawData=null;
+		this.rawData=null;
 		this.vscale = 1;
 		this.geo = null;
 		this.material = null;
@@ -94,6 +94,7 @@ varying vec3 vecPos;
 varying vec3 vecNormal;
 attribute float height01;
 uniform float my_opacity;
+uniform float my_showZeroVals;
 uniform float scaleOpacity;
 uniform float vscale;
 varying float vOpacity;
@@ -104,9 +105,11 @@ void main() {
   vHeight = height01 * vscale;
 
   if (scaleOpacity>0.0) {
-  	vOpacity = log(height01+1.0)/log(2.0)*vscale ;
+  	vOpacity = log(height01+1.0)/log(2.0); 
+  	if (my_showZeroVals==0.0) vOpacity = vOpacity * vscale;
   } else {
 	vOpacity  = my_opacity * vscale;
+	if (my_showZeroVals>0.0) vOpacity = my_opacity;
   }
 
   // Adjust position based on vscale
@@ -270,9 +273,9 @@ void main(void) {
 
 			if (isJSON) {
 				d3.json(elData.src, function(json) {
-					elData.rawData = json.data;
-					elData.NROWS = json.data.length;
-					elData.NCOLS = json.data[0].length;
+					this.rawData = json.data;
+					this.NROWS = json.data.length;
+					this.NCOLS = json.data[0].length;
 					thisComponent.update(elData);  // Force re-update
 				}); //end JSON loader
 			} else { // Assume it is an Image object or a image name (string)
@@ -297,11 +300,12 @@ void main(void) {
 					context.drawImage(img, 0, 0);
 
 					var imgBytes = context.getImageData(0, 0,img.width, img.height).data;
-					elData.rawData = new Uint8Array(img.width * img.height);
-					for (var i=0, j=0; j<elData.rawData.length; i+=4, j++) elData.rawData[j] = imgBytes[i];
+					thisComponent.rawData = new Uint8Array(img.width * img.height);
+					for (var i=0, j=0; j<thisComponent.rawData.length; i+=4, j++) thisComponent.rawData[j] = imgBytes[i];
 
-					elData.NROWS = img.height;
-					elData.NCOLS = img.width;
+					thisComponent.NROWS = img.height;
+					thisComponent.NCOLS = img.width;
+					thisComponent.newData = true;
 					thisComponent.update(elData);  // Force re-update
 				}// onImageLoaded
 
@@ -319,13 +323,27 @@ void main(void) {
 
 
 
-		var updateGeometry = elData.rawData;
+		var updateGeometry = false;
 		var updateMaterial = false;
 
 		if (!this.geo) updateGeometry = true;
 		if (!this.material) updateMaterial = true;
+		if (this.newData) { updateGeometry = true; thisComponent.newData = false; }
+
 		if ("opacity" in diff) updateMaterial = true;
 		if ("palette" in diff) updateMaterial = true;
+		if ("flipPalette" in diff) updateMaterial = true;
+		if ("palette" in diff) updateMaterial = true;
+		if ("palette" in diff) updateMaterial = true;
+		if ("scaleOpacity" in diff) updateMaterial = true;
+		if ("scaleArea" in diff) updateGeometry = true;
+		if ("src" in diff) updateGeometry = true;
+
+		if ("showZerovalCells" in diff) {updateGeometry = true; updateMaterial = true;}
+		if ("wireframeOn" in diff) updateMaterial = true;
+		if ("scaleArea" in diff) updateGeometry = true;
+		if ("scaleArea" in diff) updateGeometry = true;
+		if (elData.unloadingAnimCompleted) updateGeometry = true;
 		// TODO add all the other attribures that can trigger a material refresh
 		
 
@@ -370,7 +388,7 @@ void main(void) {
 	     * Convert palette string into array of colors
 	     * We put built-in palettes here too.
 	     */
-	    if ("palette" in diff || !Array.isArray(this.palette) ) {
+	    if ("palette" in diff  || "flipPalette" in diff || !Array.isArray(this.palette) ) {
 	    	data.palette = data.palette.toLowerCase();
 	      if ("greypurple" === data.palette) {
 	        this.palette=['#f7fcfd','#e0ecf4','#bfd3e6','#9ebcda','#8c96c6','#8c6bb1','#88419d','#6e016b'];
@@ -405,7 +423,7 @@ void main(void) {
 	      }
 
 	      // Create a 1xN texture based on this palette
-	      this.paletteTexture = palette2texture(this.palette);
+	      this.paletteTexture = palette2texture(this.palette, elData.flipPalette);
 
 	    }
 
@@ -415,8 +433,8 @@ void main(void) {
 		OK now we can proceed to build the graph
 		*/
 		if (updateGeometry) {
-			var NROWS = elData.NROWS; // Source image dimensions
-			var NCOLS = elData.NCOLS;
+			var NROWS = this.NROWS; // Source image dimensions
+			var NCOLS = this.NCOLS;
 
 			elData.height = elData.width / (NROWS/NCOLS);
 			var AFRAME_UNITS_PER_HEXCELL = Math.min( elData.width/NCOLS/Math.PI*2, elData.height/NROWS/Math.PI*2); //AFrame units per pixel
@@ -477,12 +495,12 @@ void main(void) {
 			var randomPool = []; for (var i=0; i<100; i++) randomPool.push(Math.random()*0.001);
 
 			//var maxDataVal = 0; for (var i=0; i<elData.rawData.length; i++) maxDataVal = Math.max(maxDataVal, elData.rawData[i]);
-			var rawdataIsVector = isFinite(elData.rawData[0]);// slower: elData.rawData instanceof Uint8Array;
+			var rawdataIsVector = isFinite(this.rawData[0]);// slower: elData.rawData instanceof Uint8Array;
 			for (var rw=0; rw<NROWS; rw++){
 				var tmp_ri = rw*NCOLS;
 				for (var cl=0; cl<NCOLS; cl++){
 					//val = rawdataIsVector ? elData.rawData[rw*NCOLS + cl] : elData.rawData[rw][cl];
-					val = elData.rawData[tmp_ri + cl];// : elData.rawData[rw][cl];
+					val = this.rawData[tmp_ri + cl];// : elData.rawData[rw][cl];
 					if (elData.invertElevation) val = 255 - val;
 					xoff= randomPool[rw*cl % randomPool.length]  ; // A bit of wiggle here helps prevent Moire patterns
 					yoff= randomPool[(rw*5)*cl % randomPool.length]  ;
@@ -546,7 +564,7 @@ void main(void) {
 		 * Set up material
 		 */
 
-		 if ( updateMaterial ) {
+		 if ( updateMaterial || updateGeometry ) {
 			
 			this.material =new THREE.MeshStandardMaterial({
 				color:0xffffff,
@@ -569,6 +587,7 @@ void main(void) {
 					{
 						vscale:         { type: 'f', value: this.vscale },
 						my_opacity:     { type: 'f', value: elData.opacity },
+						my_showZeroVals:{ type: 'f', value: elData.showZerovalCells?1.0:0.0 },
 						scaleOpacity:   { type: 'f', value: elData.scaleOpacity?1.0:0.0 },
 						paletteTexture: { type: 't', value: this.paletteTexture },
 						diffuse: 		{ type: 'c', value: new THREE.Color(0xffffff) }
@@ -668,7 +687,7 @@ void main(void) {
 
 
 
-function palette2texture(palette){
+function palette2texture(palette, flip){
 
   // Create canvas
   var paletteCanvas = document.createElement('canvas');
@@ -688,12 +707,23 @@ function palette2texture(palette){
 
   // Create ImageData object and populate its .data array
   var id = ctx.createImageData(paletteCanvas.width,1);
-  for (var i=0, j=0; i<paletteCanvas.width; i++){
-    var a = hexToRgb(palette[i]);
-    id.data[j++] = a[0]; // r
-    id.data[j++] = a[1]; // g 
-    id.data[j++] = a[2]; // b
-    id.data[j++] = 255; // alpha is always 255 
+  if (flip) {
+	  for (var i=paletteCanvas.width-1, j=0; i>0; i--){
+	    var a = hexToRgb(palette[i]);
+	    id.data[j++] = a[0]; // r
+	    id.data[j++] = a[1]; // g 
+	    id.data[j++] = a[2]; // b
+	    id.data[j++] = 255; // alpha is always 255 
+	  }
+
+  } else {
+	  for (var i=0, j=0; i<paletteCanvas.width; i++){
+	    var a = hexToRgb(palette[i]);
+	    id.data[j++] = a[0]; // r
+	    id.data[j++] = a[1]; // g 
+	    id.data[j++] = a[2]; // b
+	    id.data[j++] = 255; // alpha is always 255 
+	  }
   }
   ctx.putImageData( id, 0,0); 
   return new THREE.Texture(paletteCanvas);

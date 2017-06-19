@@ -93,13 +93,13 @@
 					palette: p});
 		} // handleClick()
 
-
+/*
 var controller = gui.add(fizzyText, 'maxSize', 0, 10);
 
 controller.onChange(function(value) {
   // Fires on every change, drag, keypress, etc.
 });
-
+*/
 
 	</script>
 
@@ -250,8 +250,13 @@ controller.onChange(function(value) {
 <div style="flex:1" class="cbutton">parula</div>
 <div style="flex:1" class="cbutton">cool</div>
 
-<div style="flex:1" class="cbutton"><input type="checkbox" id="flipPalette">flipPalette </div>
-<div style="flex:1" class="cbutton"><input type="checkbox" id="scaleOpacity">scaleOpacity </div>
+<div style="flex:1" class="cbutton"><input type="checkbox" id="flipPalette" onclick="document.getElementById('map').setAttribute('aframe-hexgraph-hexmap', {flipPalette: this.checked})">flipPalette </div>
+<div style="flex:1" class="cbutton"><input type="checkbox" id="scaleOpacity" onclick="document.getElementById('map').setAttribute('aframe-hexgraph-hexmap', {scaleOpacity: this.checked})">scaleOpacity </div>
+<div style="flex:1" class="cbutton"><input type="checkbox" id="scaleOpacity" onclick="document.getElementById('map').setAttribute('aframe-hexgraph-hexmap', {scaleArea: this.checked})">scaleArea </div>
+
+<div style="flex:1" class="cbutton"><input type="checkbox" id="scaleOpacity" onclick="document.getElementById('map').setAttribute('aframe-hexgraph-hexmap', {showZerovalCells: this.checked})">showZerovalCells </div>
+<div style="flex:1" class="cbutton"><input type="checkbox" id="scaleOpacity" onclick="document.getElementById('map').setAttribute('aframe-hexgraph-hexmap', {wireframeOn: this.checked})">wireframeOn </div>
+<div style="flex:1" class="cbutton"><input type="checkbox" id="scaleOpacity">scaleArea </div>
 <div style="flex:1" class="cbutton"><input type="checkbox" id="scaleOpacity">scaleArea </div>
 
 </div>
@@ -260,7 +265,7 @@ d3.selectAll('.cbutton').on("click", function(){
 	if (this.children.length==0) {
 		document.getElementById('map').setAttribute('aframe-hexgraph-hexmap', {palette: this.innerText.toLowerCase()});
 	} else {
-		
+
 	}
 }
 );
