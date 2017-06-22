@@ -10,7 +10,13 @@ window.toc = function(ticStart){
 };
 
 
+if (AFRAME === undefined) {
+	console.error('AFRAME is not loaded')
+}
 
+if (d3 === undefined) {
+	console.error('d3 is not loaded. It is required by aframe-hexgraph-hexmap');
+}
 
  AFRAME.registerComponent("aframe-hexgraph-hexmap", {
 
@@ -361,7 +367,7 @@ void main(void) {
 			/*
 			 * Here we can do unloading animation (if there is an existing geometry to unload)
 			 */
-			if (elData.unloadingAnimDur>0 && !d3 ) {
+			if (elData.unloadingAnimDur>0 && d3===undefined ) {
 				elData.unloadingAnimDur = 0;
 				console.log('aframe-hexgraph-hexmap: skiping unloading animation since d3 is not available');
 				elData.unloadingAnimCompleted = true;
