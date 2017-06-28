@@ -5,9 +5,10 @@
   <title>My A-Frame Scene</title>
   <script src="//aframe.io/releases/0.5.0/aframe.min.js"></script> 
 	<link href="https://fonts.googleapis.com/css?family=Raleway" rel="stylesheet">
-    <script src="https://cdn.rawgit.com/tizzle/aframe-orbit-controls-component/master/dist/aframe-orbit-controls-component.min.js"></script>
+    <script src="aframe-orbit-controls-component.js"></script>
 
 <!--
+    <script src="https://cdn.rawgit.com/tizzle/aframe-orbit-controls-component/v0.1.7/dist/aframe-orbit-controls-component.js"></script>
     <script src="https://cdn.rawgit.com/tizzle/aframe-orbit-controls-component/master/dist/aframe-orbit-controls-component.min.js"></script>
 -->
   
@@ -131,7 +132,7 @@ controller.onChange(function(value) {
 
 	  </a-assets>
 
-	<a-sky color="#aaa"></a-sky>
+	<a-sky color="#fff"></a-sky>
 
 
 
@@ -139,18 +140,21 @@ controller.onChange(function(value) {
 		src:#pngEU;
 		width:5;
 		invertElevation:true;
+		opacityMin:1;
+		opacity:1;
 		scaleArea:false;
 		scaleOpacity: false;
 		scaleHeight:true;
 		showZerovalCells:false;
 		tileScale:0.7;
 		wireframeOn:false;
-		hexDensity:0.15;
+		hexDensity:0.30;
 		hexDensityMobile:0.33,
 		metalness: 0.58,
 		rougness: 1,
-		wireframeColor:#000;
-		palette: viridis" scale="3 0.9 3" >
+		wireframeColor:#ddd;
+		wireframeOn:false;
+		palette: viridis" scale="5 0.9 5" >
 	</a-entity>
 
 
@@ -165,7 +169,7 @@ controller.onChange(function(value) {
 
 
 	<!-- orbit control look at target. -->
-	 <a-entity id="target" geometry="primitive: box" scale="0.1 0.1 0.1" material="color: #cc0000; wireframe:true; visible:false"></a-entity>
+	 <a-entity id="target" geometry="primitive: box" scale="0.1 0.1 0.1" position="0 0 -2.3" material="color: #cc0000; wireframe:true; visible:false"></a-entity>
 
 
 
@@ -184,9 +188,9 @@ controller.onChange(function(value) {
                 dampingFactor: 0.125;
                 rotateSpeed:0.15;
 				zoomSpeed:0.5;
-				minPolarAngle: 0.7;
+				minPolarAngle: 0.2;
 				maxPolarAngle:1.3;
-				maxAzimuthAngle:1.2;
+				maxAzimuthAngle:1.6;
 				minAzimuthAngle: -1.2;
                 minDistance:1;
                 maxDistance:10;"

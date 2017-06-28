@@ -34,8 +34,9 @@ if (d3 === undefined) {
 		hexDensity:      { type: "number", default:0.3},
 		hexDensityMobile:{ type: "number", default:0.1},
 
-		loadingAnimDur:  { type: "number", default: 1400},
+		loadingAnimDur:  { type: "number", default: 3500},
 		unloadingAnimDur:{ type: "number", default: 500},
+		loadingAnimDelay:  { type: "number", default: 0},
 
 		palette:         { type: "string", default: 'redblue'},
 		flipPalette:     { type: "boolean", default: false},
@@ -377,7 +378,7 @@ void main(void) {
 			if (!this.el.getObject3D('mesh')) elData.unloadingAnimCompleted = true; // If we have no geometry (first time we get loaded), we're already done
 			if (!elData.unloadingAnimCompleted) {
 				//Then play the flatten animation
-				d3.select(this.el).transition().duration(elData.unloadingAnimDur*2.5).tween('vscale',function(){return function(t){
+				d3.select(this.el).transition().duration(elData.unloadingAnimDur).tween('vscale',function(){return function(t){
 			          this.vscale = t;
 			          if (this.material.uniforms) this.material.uniforms.vscale.value = (1-t);
 					//this.components.scale.data.y = this.components.scale.desiredY * (1-t);
@@ -670,18 +671,16 @@ void main(void) {
 				//this.el.components.scale.data.y = 0.01;
 				//this.el.components.scale.update();
 				//Then play the grow animation
-				d3.select(this.el).transition().duration(elData.loadingAnimDur*2.5).tween('vscale',function(){return function(t){
+
+				d3.select(this.el).transition().delay(elData.loadingAnimDelay).duration(elData.loadingAnimDur).tween('vscale',function(){return function(t){
 			          this.vscale = t;
 			          if (this.material.uniforms) this.material.uniforms.vscale.value = t;
 					//this.components.scale.data.y = this.components.scale.desiredY * t;
 					//this.components.scale.update();	
 					//this.components['aframe-hexgraph-hexmap'].material.opacity= this.components['aframe-hexgraph-hexmap'].data.opacity * t;
 					return "";
-				}.bind(thisComponent)});/*.on("end", function(a,b,c){
-
-					// Call back 
-					this.components['aframe-hexgraph-hexmap'].data.loadingAnimCompleted=true; this.components['aframe-hexgraph-hexmap'].update(elData)
-				});*/
+				}.bind(thisComponent)});
+				elData.loadingAnimDelay = 0; // We only apply the delay the first time a loading anim is run.
 			} // Set up loading animation?
 
 		} // Only do loading anim if geometry got updated

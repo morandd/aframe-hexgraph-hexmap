@@ -46,7 +46,8 @@ totally indebted to [Amit's](http://www.redblobgames.com/grids/hexagons/) expana
 | specular | Control material specular color | #111111
 | blending | THREE.js blending mode, as string | THREE.NormalBlending |
 | opacity | Opacity of the object (only takes effect if scaleOpacity is false, or using a custom material) | 0.75 |
-| loadingAnimDur | Loading animation duration (0 to disable) | 1400
+| loadingAnimDur | Loading animation duration (0 to disable) | 3500
+| loadingAnimDelay | Delay before playing first loading animation. Subsequent loading anims have 0 delay. | 0
 | unloadingAnimDur | Unloading animation duration (0 to disable) | 500
 
 
