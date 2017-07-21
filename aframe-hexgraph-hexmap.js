@@ -303,7 +303,10 @@ void main(void) {
 						return;
 			      	}
 			      	img=img[0];
-			    }  // Now img is an Image object or Element object
+			    } else {
+				img = elData.src;
+				}
+  // Now img is an Image object or Element object
 				if (img.complete) onImageLoaded(); else img.addEventListener("load",onImageLoaded);
 				return;
 				function onImageLoaded(){
